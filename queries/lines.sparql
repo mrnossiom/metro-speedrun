@@ -1,0 +1,14 @@
+SELECT DISTINCT ?id ?name ?color
+WHERE {
+  ?id wdt:P31/wdt:P279* wd:Q15079663. # (subclass?) instance of = subway line
+  ?id wdt:P16 wd:Q50716. # transport network = Paris Subway
+  ?id wdt:P5817 wd:Q55654238. # state of use = in use
+
+  ?id wdt:P465 ?color.
+
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "fr".
+  
+    ?id rdfs:label ?name
+  }
+}
