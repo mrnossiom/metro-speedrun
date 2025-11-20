@@ -1,12 +1,12 @@
 [package]
 name = "metro-speedrun"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-blake3 = "1.8.2"
-clap = { version = "4.5.51", features = ["derive"] }
-csv = "1.4.0"
-petgraph = "0.8.3"
-reqwest = { version = "0.12.24", features = ["blocking"] }
-serde = { version = "1.0.228", features = ["derive"] }
+blake3 = "1"
+clap = { version = "4", features = ["derive"] }
+csv = "1"
+petgraph = "0.8"
+reqwest = { version = "0.12", features = ["blocking"] }
+serde = { version = "1", features = ["derive"] }

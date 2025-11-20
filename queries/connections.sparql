@@ -8,12 +8,12 @@ WHERE
   ?adjacentStationId wdt:P5817 wd:Q55654238. # state of use = in use
   ?lineId wdt:P5817 wd:Q55654238. # state of use = in use
 
-  ?stationId p:P197 ?statement.
-  ?statement
+  # Ensure adjacent station is on the same line
+  ?stationId p:P197 ?adjacentStation.
+  ?adjacentStation
     ps:P197 ?adjacentStationId;
-    pq:P81 ?lineId.
+    pq:P81 ?lineId;
+    pq:P5051 ?lineDirection.
 
-  # Ensure adjacent station is on the same line (fix this)
-  ?stationId wdt:P81 ?lineId.
-  ?adjacentStationId wdt:P81 ?lineId.
+  # TODO: do not count multiple lineDirections as unique edges
 }
