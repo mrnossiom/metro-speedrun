@@ -45,7 +45,7 @@ where
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Line {
-	pub id: types::Qid,
+	pub id: types::LineQid,
 	pub name: String,
 	pub color: String,
 }
@@ -59,7 +59,7 @@ impl fmt::Display for Line {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Station {
-	pub id: types::Qid,
+	pub id: types::StationQid,
 	pub name: String,
 	pub coords: types::Point,
 }
@@ -73,9 +73,9 @@ impl fmt::Display for Station {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
-	pub station_id: types::Qid,
-	pub adjacent_station_id: types::Qid,
-	pub line_id: types::Qid,
+	pub station_id: types::StationQid,
+	pub adjacent_station_id: types::StationQid,
+	pub line_id: types::LineQid,
 }
 
 pub mod types {
@@ -95,6 +95,12 @@ pub mod types {
 		}
 	}
 
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+	pub struct LineQid(pub Qid);
+
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+	pub struct StationQid(pub Qid);
+
 	impl<'de> Deserialize<'de> for Qid {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 		where
@@ -106,23 +112,21 @@ pub mod types {
 				type Value = Qid;
 
 				fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-					formatter.write_str("a string formatted like Point(x y)")
+					formatter
+						.write_str("a string formatted like http://www.wikidata.org/entity/Qxxx")
 				}
 
-				// This function is called when Serde encounters a string in the input
 				fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
 				where
 					E: de::Error,
 				{
-					let inner = value
+					let qid = value
 						.strip_prefix("http://www.wikidata.org/entity/Q")
-						.ok_or_else(|| E::custom(format!("Invalid format: {}", value)))?;
-
-					let x = inner
+						.ok_or_else(|| E::custom(format!("Invalid format: {}", value)))?
 						.parse::<u32>()
-						.map_err(|_| E::custom("X is not a valid f32"))?;
+						.map_err(|_| E::custom("Qid is not a valid u32"))?;
 
-					Ok(Qid(x))
+					Ok(Qid(qid))
 				}
 			}
 
@@ -153,34 +157,26 @@ pub mod types {
 					formatter.write_str("a string formatted like Point(x y)")
 				}
 
-				// This function is called when Serde encounters a string in the input
 				fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
 				where
 					E: de::Error,
 				{
-					// Step A: Check format and strip wrapping "Point(" and ")"
-					// We trim matches to handle strict format "Point(...)"
 					let inner = value
 						.strip_prefix("Point(")
 						.and_then(|s| s.strip_suffix(")"))
 						.ok_or_else(|| E::custom(format!("Invalid format: {}", value)))?;
 
-					// Step B: Split by whitespace to get the two numbers
 					let mut parts = inner.split_whitespace();
 
-					// Step C: Parse the first number
-					let x_str = parts
+					let x = parts
 						.next()
-						.ok_or_else(|| E::custom("Missing X coordinate"))?;
-					let x = x_str
+						.ok_or_else(|| E::custom("Missing X coordinate"))?
 						.parse::<f32>()
 						.map_err(|_| E::custom("X is not a valid f32"))?;
 
-					// Step D: Parse the second number
-					let y_str = parts
+					let y = parts
 						.next()
-						.ok_or_else(|| E::custom("Missing Y coordinate"))?;
-					let y = y_str
+						.ok_or_else(|| E::custom("Missing Y coordinate"))?
 						.parse::<f32>()
 						.map_err(|_| E::custom("Y is not a valid f32"))?;
 

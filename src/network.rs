@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use petgraph::{
 	Graph,
@@ -7,16 +7,17 @@ use petgraph::{
 	visit::EdgeRef,
 };
 
-use crate::queries::{self, fetch_query, types::Qid};
+use crate::queries::{
+	self, fetch_query,
+	types::{LineQid, StationQid},
+};
 
 pub struct Network {
-	pub lines: HashMap<Qid, queries::Line>,
-	pub stations: HashMap<Qid, queries::Station>,
-	pub station_nodes: HashMap<Qid, NodeIndex>,
+	pub lines: HashMap<LineQid, queries::Line>,
+	pub stations: HashMap<StationQid, queries::Station>,
+	pub station_nodes: HashMap<StationQid, NodeIndex>,
 
-	/// Nodes are stations Qids
-	/// Edges are connections between stations and labels with the line id
-	pub graph: Graph<Qid, Qid>,
+	pub graph: Graph<StationQid, LineQid>,
 }
 
 impl Network {
@@ -72,30 +73,77 @@ impl Network {
 		})
 	}
 
-	pub fn pre_process(&mut self) {
-		// TODO
-	}
-
 	pub fn to_dot(&self) -> String {
-		let get_node_attrs = |_graph, (_idx, station_id): (NodeIndex, &queries::types::Qid)| {
-			format!(
-				r#"label = "{}" pos = "{}!" fontsize = 12.0"#,
-				self.stations[station_id].name, self.stations[station_id].coords
-			)
-		};
-		let get_edge_attrs = |_graph, edge: EdgeReference<'_, Qid>| {
-			format!(
-				r##"color = "#{}" penwidth = 2.0"##,
-				self.lines[edge.weight()].color
-			)
-		};
-		let dot = Dot::with_attr_getters(
-			&self.graph,
-			&[Config::EdgeNoLabel, Config::NodeNoLabel],
-			&get_edge_attrs,
-			&get_node_attrs,
-		);
+		struct NetworkDisplay<'a>(&'a Network);
 
-		format!("{}", dot)
+		impl fmt::Display for NetworkDisplay<'_> {
+			fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+				let get_node_attrs = |_graph, (_idx, station_id): (NodeIndex, &StationQid)| {
+					format!(
+						r#"pos = "{}!" fontsize = 12.0"#,
+						self.0.stations[station_id].coords
+					)
+				};
+				let get_edge_attrs = |_graph, edge: EdgeReference<'_, LineQid>| {
+					format!(
+						r##"color = "#{}" penwidth = 2.0"##,
+						self.0.lines[edge.weight()].color
+					)
+				};
+				let dot = Dot::with_attr_getters(
+					&self.0.graph,
+					&[Config::EdgeNoLabel],
+					&get_edge_attrs,
+					&get_node_attrs,
+				);
+
+				dot.graph_fmt(
+					f,
+					|station_id, f| f.write_str(&self.0.stations[station_id].name),
+					|_line, _f| Ok(()),
+				)
+			}
+		}
+
+		NetworkDisplay(self).to_string()
 	}
+}
+
+pub fn traformed_to_dot(
+	graph: &Graph<LineQid, StationQid>,
+	lines: &HashMap<LineQid, queries::Line>,
+	stations: &HashMap<StationQid, queries::Station>,
+) -> String {
+	struct NetworkDisplay<'a> {
+		graph: &'a Graph<LineQid, StationQid>,
+		lines: &'a HashMap<LineQid, queries::Line>,
+		stations: &'a HashMap<StationQid, queries::Station>,
+	}
+
+	impl fmt::Display for NetworkDisplay<'_> {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			let get_node_attrs = |_graph, (_idx, line_id): (NodeIndex, &LineQid)| {
+				format!(
+					r##"color = "#{}" fontsize = 12.0"##,
+					self.lines[line_id].color
+				)
+			};
+			let get_edge_attrs =
+				|_graph, _edge: EdgeReference<'_, StationQid>| r##"fontsize = 12.0"##.to_string();
+			let dot = Dot::with_attr_getters(&self.graph, &[], &get_edge_attrs, &get_node_attrs);
+
+			dot.graph_fmt(
+				f,
+				|line_id, f| f.write_str(&self.lines[line_id].name),
+				|station_id, f| f.write_str(&self.stations[station_id].name),
+			)
+		}
+	}
+
+	NetworkDisplay {
+		graph,
+		lines,
+		stations,
+	}
+	.to_string()
 }

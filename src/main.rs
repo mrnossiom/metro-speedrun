@@ -1,147 +1,83 @@
-use std::{
-	collections::{HashMap, HashSet},
-	fs, mem,
-	path::PathBuf,
-	time::Duration,
-};
+use std::{collections::HashMap, fs, path::PathBuf};
 
 use clap::Parser;
 use petgraph::{
 	Graph,
-	graph::NodeIndex,
-	visit::{EdgeRef, NodeRef},
+	graph::{EdgeIndex, NodeIndex},
+	visit::EdgeRef,
 };
 
 mod network;
 mod queries;
+mod traversals;
 
-use crate::{network::Network, queries::types::Qid};
+use crate::{
+	network::{Network, traformed_to_dot},
+	queries::types::{LineQid, StationQid},
+};
 
 #[derive(clap::Parser)]
 struct Args {
-	output: PathBuf,
+	#[clap(default_value = "output")]
+	outdir: PathBuf,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = Args::parse();
 
 	let mut network = Network::new()?;
-	network.pre_process();
-	fs::write(args.output, network.to_dot())?;
+	fs::write(args.outdir.join("network.dot"), network.to_dot())?;
 
-	FindShortestRoute::traverse_network(&network);
+	let transformed_network = ConnectionsToNode::traverse(&network);
+	fs::write(
+		args.outdir.join("transformed.dot"),
+		traformed_to_dot(&transformed_network, &network.lines, &network.stations),
+	)?;
+
+	// DfsBruteForce::traverse(&network);
 
 	Ok(())
 }
 
-#[derive(Debug)]
-pub struct FindShortestRoute<'a> {
-	graph: &'a Graph<Qid, Qid>,
+struct ConnectionsToNode<'a> {
+	graph: &'a Graph<StationQid, LineQid>,
 
-	lines: &'a HashMap<Qid, queries::Line>,
-	stations: &'a HashMap<Qid, queries::Station>,
-
-	start_station: Qid,
-	route: Vec<(Qid, Qid)>,
-
-	lines_taken: HashSet<Qid>,
-	line_streak: Streak<Qid>,
+	output_map: HashMap<EdgeIndex, NodeIndex>,
+	output: &'a mut Graph<LineQid, StationQid>,
 }
 
-impl FindShortestRoute<'_> {
-	pub fn traverse_network(network: &Network) {
-		let mut traversal = FindShortestRoute {
+impl ConnectionsToNode<'_> {
+	fn traverse(network: &Network) -> Graph<LineQid, StationQid> {
+		let mut output = Graph::new();
+
+		ConnectionsToNode {
 			graph: &network.graph,
 
-			lines: &network.lines,
-			stations: &network.stations,
-
-			start_station: Qid(0),
-			route: Vec::new(),
-
-			lines_taken: HashSet::new(),
-			line_streak: Streak::new(Qid(0)),
-		};
-		for node_idx in network.graph.node_indices() {
-			// for node_idx in [NodeIndex::new(290)] {
-			println!(
-				"starting from node {}",
-				network.stations[&network.graph[node_idx]]
-			);
-			traversal.start_station = traversal.graph[node_idx];
-			traversal.continue_at(node_idx);
+			output_map: HashMap::new(),
+			output: &mut output,
 		}
+		.continue_at();
+
+		output
 	}
 
-	pub fn continue_at(&mut self, idx: NodeIndex) {
-		// std::thread::sleep(Duration::from_millis(100));
-		// self.print_route();
+	fn continue_at(&mut self) {
+		for edge_idx in self.graph.edge_indices() {
+			let new_edge = *self
+				.output_map
+				.entry(edge_idx)
+				.or_insert_with(|| self.output.add_node(self.graph[edge_idx]));
 
-		const MAX_LINES: usize = 16;
-		const MAX_LINE_STREAK: u32 = 4;
-		const MAX_ROUTE_LENGTH: usize = 100;
-		// const MAX_ROUTE_LENGTH: usize = 27;
+			let (_src, target) = self.graph.edge_endpoints(edge_idx).unwrap();
+			for target_edge in self.graph.edges(target) {
+				let new_target_edge = *self
+					.output_map
+					.entry(target_edge.id())
+					.or_insert_with(|| self.output.add_node(self.graph[target_edge.id()]));
 
-		if self.lines_taken.len() == MAX_LINES {
-			self.print_route();
-			// println!();
-			return;
-		}
-
-		if self.line_streak.current > MAX_LINE_STREAK {
-			return;
-		}
-
-		if self.route.len() == MAX_ROUTE_LENGTH {
-			return;
-		}
-
-		for edge in self.graph.edges(idx) {
-			let streak_save = self.line_streak.record_kind_and_save(*edge.weight());
-			self.route.push((*edge.weight(), self.graph[edge.target()]));
-			let was_line_added = self.lines_taken.insert(*edge.weight());
-
-			self.continue_at(edge.target());
-
-			if was_line_added {
-				self.lines_taken.remove(edge.weight());
+				self.output
+					.add_edge(new_edge, new_target_edge, self.graph[target]);
 			}
-			self.route.pop();
-			self.line_streak = streak_save;
 		}
-	}
-
-	fn print_route(&self) {
-		print!("{} ", self.stations[&self.start_station]);
-		for (line, node) in &self.route {
-			print!("-({})> {} ", &self.lines[line], &self.stations[node]);
-		}
-		println!();
-	}
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-struct Streak<T: Copy + PartialEq> {
-	kind: T,
-	current: u32,
-}
-
-impl<T: Copy + PartialEq> Streak<T> {
-	fn new(initial: T) -> Self {
-		Self {
-			kind: initial,
-			current: 0,
-		}
-	}
-
-	fn record_kind_and_save(&mut self, kind: T) -> Self {
-		let save = *self;
-		if self.kind == kind {
-			self.current += 1;
-		} else {
-			self.kind = kind;
-			self.current = 1;
-		}
-		save
 	}
 }

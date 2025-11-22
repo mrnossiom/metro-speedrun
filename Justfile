@@ -3,5 +3,4 @@ _default:
 
 show output:
 	fdp -T svg -O {{output}}
-	# $BROWSER output.dot.png
-	zen {{output}}.svg
+	$BROWSER {{output}}.svg
