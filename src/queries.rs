@@ -1,12 +1,62 @@
 use csv::DeserializeRecordsIntoIter;
 use reqwest::blocking::Client;
 use serde::{Deserialize, de::DeserializeOwned};
-use std::{fmt, fs, io::Write, path::Path};
+use std::{collections::HashMap, fmt, fs, io::Write, path::Path};
 
 const CACHE_DIR: &str = ".cache/queries";
 
+pub struct SubwayData {
+	pub lines: HashMap<types::LineQid, Line>,
+	pub stations: HashMap<types::StationQid, Station>,
+
+	pub connections: Vec<Connection>,
+}
+
+impl SubwayData {
+	pub fn fetch(subway_qid: &str) -> Result<Self, Box<dyn std::error::Error>> {
+		let lines_query = include_str!("../queries/lines.sparql").replace("{subway}", subway_qid);
+		let stations_query =
+			include_str!("../queries/stations.sparql").replace("{subway}", subway_qid);
+		let connections_query =
+			include_str!("../queries/connections.sparql").replace("{subway}", subway_qid);
+
+		let lines_query = fetch_query::<Line>("lines", &lines_query)?;
+		let stations_query = fetch_query::<Station>("stations", &stations_query)?;
+		let connections_query = fetch_query::<Connection>("connections", &connections_query)?;
+
+		let mut lines = HashMap::new();
+		let mut stations = HashMap::new();
+		let mut connections = Vec::new();
+
+		// Collect all lines
+		for line in lines_query {
+			let line = line?;
+			lines.insert(line.id, line);
+		}
+
+		// Collect all stations
+		for station in stations_query {
+			let station = station?;
+			stations.insert(station.id, station);
+		}
+
+		// Link stations
+		for connection in connections_query {
+			let connection = connection?;
+			connections.push(connection);
+		}
+
+		Ok(Self {
+			lines,
+			stations,
+			connections,
+		})
+	}
+}
+
 /// Fetches a SPARQL query result, caches it on disk.
 pub fn fetch_query<T>(
+	name: &str,
 	query: &str,
 ) -> Result<DeserializeRecordsIntoIter<std::fs::File, T>, Box<dyn std::error::Error>>
 where
@@ -18,10 +68,10 @@ where
 	hasher.update(query.as_bytes());
 	let mut fingerprint = hasher.finalize().to_hex();
 	fingerprint.truncate(8);
-	let cache_file = format!("{CACHE_DIR}/{fingerprint}.csv");
+	let cache_file = format!("{CACHE_DIR}/{name}_{fingerprint}.csv");
 
 	if !Path::new(&cache_file).exists() {
-		println!("fetching query to {cache_file}");
+		println!("fetching `{name}` query to {cache_file}");
 		let client = Client::new();
 		let res = client
 			.get("https://query.wikidata.org/sparql")
@@ -34,7 +84,7 @@ where
 		let mut file = fs::File::create(&cache_file)?;
 		file.write_all(res.as_bytes())?;
 	} else {
-		println!("query cached in {cache_file}");
+		println!("query `{name}` cached in {cache_file}");
 	}
 
 	let csv = csv::Reader::from_path(&cache_file)?;

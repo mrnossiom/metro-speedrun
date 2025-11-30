@@ -5,7 +5,7 @@ use petgraph::{Graph, graph::NodeIndex, visit::EdgeRef};
 use crate::{
 	network::Network,
 	queries::{
-		self,
+		self, SubwayData,
 		types::{LineQid, Qid, StationQid},
 	},
 };
@@ -25,12 +25,12 @@ pub struct DfsBruteForce<'a> {
 }
 
 impl DfsBruteForce<'_> {
-	pub fn traverse(network: &Network) {
+	pub fn traverse(network: &Network, data: &SubwayData) {
 		let mut traversal = DfsBruteForce {
 			graph: &network.graph,
 
-			lines: &network.lines,
-			stations: &network.stations,
+			lines: &data.lines,
+			stations: &data.stations,
 
 			start_station: StationQid(Qid(0)),
 			route: Vec::new(),
@@ -41,7 +41,7 @@ impl DfsBruteForce<'_> {
 		for node_idx in network.graph.node_indices() {
 			println!(
 				"starting from node {}",
-				network.stations[&network.graph[node_idx]]
+				data.stations[&network.graph[node_idx]]
 			);
 			traversal.start_station = traversal.graph[node_idx];
 			traversal.continue_at(node_idx);
