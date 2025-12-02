@@ -1,65 +1,57 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::VecDeque, mem};
 
 use petgraph::{Graph, graph::NodeIndex, visit::EdgeRef};
 
 use crate::{
-	network::Network,
-	queries::{
-		self, SubwayData,
-		types::{LineQid, Qid, StationQid},
-	},
+	network::{InvertedNetwork, Network},
+	queries::{LineId, SubwayData, types::StationQid},
 };
 
 #[derive(Debug)]
-pub struct DfsBruteForce<'a> {
-	graph: &'a Graph<StationQid, LineQid>,
+pub struct NormalDfs<'a> {
+	graph: &'a Graph<StationQid, LineId>,
 
-	lines: &'a HashMap<LineQid, queries::Line>,
-	stations: &'a HashMap<StationQid, queries::Station>,
+	data: &'a SubwayData,
 
-	start_station: StationQid,
-	route: Vec<(LineQid, StationQid)>,
-
-	lines_taken: HashSet<LineQid>,
-	line_streak: Streak<LineQid>,
+	route: Vec<NodeIndex>,
+	lines_taken: u32,
+	line_streak: Streak<LineId>,
 }
 
-impl DfsBruteForce<'_> {
+impl NormalDfs<'_> {
 	pub fn traverse(network: &Network, data: &SubwayData) {
-		let mut traversal = DfsBruteForce {
+		let mut traversal = NormalDfs {
 			graph: &network.graph,
+			data,
 
-			lines: &data.lines,
-			stations: &data.stations,
-
-			start_station: StationQid(Qid(0)),
-			route: Vec::new(),
-
-			lines_taken: HashSet::new(),
-			line_streak: Streak::new(LineQid(Qid(0))),
+			route: Vec::default(),
+			lines_taken: u32::default(),
+			line_streak: Streak::default(),
 		};
-		for node_idx in network.graph.node_indices() {
+
+		for start_node_idx in network.graph.node_indices() {
 			println!(
-				"starting from node {}",
-				data.stations[&network.graph[node_idx]]
+				"node {}/{}",
+				start_node_idx.index(),
+				network.graph.node_count()
 			);
-			traversal.start_station = traversal.graph[node_idx];
-			traversal.continue_at(node_idx);
+
+			traversal.route.clear();
+			traversal.lines_taken = u32::default();
+			traversal.line_streak = Streak::default();
+
+			traversal.route.push(start_node_idx);
+
+			traversal.continue_at(start_node_idx);
 		}
 	}
 
 	pub fn continue_at(&mut self, idx: NodeIndex) {
-		// std::thread::sleep(Duration::from_millis(100));
-		// self.print_route();
-
-		const MAX_LINES: usize = 16;
 		const MAX_LINE_STREAK: u32 = 4;
-		const MAX_ROUTE_LENGTH: usize = 100;
-		// const MAX_ROUTE_LENGTH: usize = 27;
+		const MAX_ROUTE_LENGTH: usize = 27;
 
-		if self.lines_taken.len() == MAX_LINES {
+		if self.lines_taken.count_ones() == self.data.nb_lines() {
 			self.print_route();
-			// println!();
 			return;
 		}
 
@@ -72,24 +64,35 @@ impl DfsBruteForce<'_> {
 		}
 
 		for edge in self.graph.edges(idx) {
-			let streak_save = self.line_streak.record_kind_and_save(*edge.weight());
-			self.route.push((*edge.weight(), self.graph[edge.target()]));
-			let was_line_added = self.lines_taken.insert(*edge.weight());
+			// Do not backtrack
+			if edge.target() == *self.route.last().unwrap() {
+				continue;
+			}
+
+			self.route.push(edge.target());
+
+			let new_lines_taken = self.lines_taken | edge.weight().bitmask();
+			let old_lines_taken = mem::replace(&mut self.lines_taken, new_lines_taken);
+
+			let old_streak = self.line_streak.record_kind_and_save(*edge.weight());
 
 			self.continue_at(edge.target());
 
-			if was_line_added {
-				self.lines_taken.remove(edge.weight());
-			}
+			self.line_streak = old_streak;
+			self.lines_taken = old_lines_taken;
 			self.route.pop();
-			self.line_streak = streak_save;
 		}
 	}
 
 	fn print_route(&self) {
-		print!("{} ", self.stations[&self.start_station]);
-		for (line, node) in &self.route {
-			print!("-({})> {} ", &self.lines[line], &self.stations[node]);
+		// print!("{} ", self.data.stations[&self.start_station]);
+		for node in &self.route {
+			print!(
+				"→{:3}",
+				// &self.data.lines[line_qid],
+				// &self.data.stations[node]
+				node.index()
+			);
 		}
 		println!();
 	}
@@ -118,5 +121,52 @@ impl<T: Copy + PartialEq> Streak<T> {
 			self.current = 1;
 		}
 		save
+	}
+}
+
+pub struct InvertedBfs {}
+
+impl InvertedBfs {
+	pub fn traverse(inv_net: &InvertedNetwork, data: &SubwayData) {
+		let InvertedNetwork { graph } = &inv_net;
+
+		let mut queue = VecDeque::new();
+
+		let mut parents = vec![NodeIndex::default(); graph.node_count()];
+		let mut lines = vec![u32::default(); graph.node_count()];
+
+		for start_node_idx in graph.node_indices() {
+			queue.clear();
+			parents.fill(Default::default());
+			lines.fill(Default::default());
+
+			queue.push_back(start_node_idx);
+
+			while let Some(node_idx) = queue.pop_front() {
+				let current_lines = lines[node_idx.index()] | graph[node_idx].bitmask();
+
+				if current_lines.count_ones() > 8 {
+					println!("{:016b}", current_lines);
+
+					let mut idx = node_idx;
+					while parents[idx.index()] != start_node_idx {
+						print!("{} ", idx.index());
+						idx = parents[idx.index()];
+					}
+					println!()
+				}
+
+				for neighbor in graph.neighbors(node_idx) {
+					if lines[neighbor.index()] != 0 {
+						continue;
+					}
+
+					lines[neighbor.index()] = current_lines;
+					parents[neighbor.index()] = node_idx;
+
+					queue.push_back(neighbor);
+				}
+			}
+		}
 	}
 }

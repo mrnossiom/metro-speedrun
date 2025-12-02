@@ -9,7 +9,6 @@ mod traversals;
 use crate::{
 	network::{InvertedNetwork, Network},
 	queries::SubwayData,
-	traversals::DfsBruteForce,
 };
 
 #[derive(clap::Parser)]
@@ -45,7 +44,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let inv_network = InvertedNetwork::from(&network);
 	fs::write(args.outdir.join("inverted.dot"), inv_network.to_dot(&data))?;
 
-	// DfsBruteForce::traverse(&network, &data);
+	traversals::NormalDfs::traverse(&network, &data);
+	// traversals::InvertedBfs::traverse(&inv_network, &data);
 
 	Ok(())
 }

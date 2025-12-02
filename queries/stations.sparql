@@ -1,19 +1,19 @@
-SELECT ?id ?name ?coords
+SELECT ?qid ?name ?coords
 WHERE
 {
   BIND(wd:{subway} as ?transportNetwork)
 
-  ?id wdt:P31/wdt:P279* wd:Q928830. # subclass* instance of = metro station
-  ?id wdt:P16 ?transportNetwork. # transport network
-  ?id wdt:P5817 wd:Q55654238. # state of use = in use
+  ?qid wdt:P31/wdt:P279* wd:Q928830. # subclass* instance of = metro station
+  ?qid wdt:P16 ?transportNetwork. # transport network
+  ?qid wdt:P5817 wd:Q55654238. # state of use = in use
 
-  ?id wdt:P625 ?coords.
+  ?qid wdt:P625 ?coords.
 
   # TODO: add interchange station (P833)?
 
   SERVICE wikibase:label {
     bd:serviceParam wikibase:language "mul,en,fr".
   
-    ?id rdfs:label ?name.
+    ?qid rdfs:label ?name.
   }
 }

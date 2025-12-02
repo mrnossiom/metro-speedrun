@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+	collections::{BTreeMap, HashMap},
+	fmt,
+};
 
 use petgraph::{
 	Graph,
@@ -7,46 +10,39 @@ use petgraph::{
 	visit::EdgeRef,
 };
 
-use crate::queries::{
-	SubwayData,
-	types::{LineQid, StationQid},
-};
+use crate::queries::{LineId, SubwayData, types::StationQid};
 
 pub struct Network {
-	pub graph: Graph<StationQid, LineQid>,
-
-	pub station_nodes: HashMap<StationQid, NodeIndex>,
+	pub graph: Graph<StationQid, LineId>,
 }
 
 impl From<&SubwayData> for Network {
 	fn from(data: &SubwayData) -> Self {
 		let SubwayData {
+			lines: _,
+			line_map,
 			stations,
 			connections,
-			..
 		} = &data;
 
-		let mut station_nodes = HashMap::new();
+		let mut station_nodes = BTreeMap::new();
 		let mut graph = Graph::new();
 
 		// Collect all stations
-		for station_id in stations.keys() {
-			let idx = graph.add_node(*station_id);
-			station_nodes.insert(*station_id, idx);
+		for station_qid in stations.keys() {
+			let idx = graph.add_node(*station_qid);
+			station_nodes.insert(*station_qid, idx);
 		}
 
 		// Link stations
 		for connection in connections {
-			let station = station_nodes[&connection.station_id];
-			let adjacent = station_nodes[&connection.adjacent_station_id];
+			let station = station_nodes[&connection.station_qid];
+			let adjacent = station_nodes[&connection.adjacent_station_qid];
 
-			graph.add_edge(station, adjacent, connection.line_id);
+			graph.add_edge(station, adjacent, line_map[&connection.line_qid]);
 		}
 
-		Self {
-			graph,
-			station_nodes,
-		}
+		Self { graph }
 	}
 }
 
@@ -93,16 +89,16 @@ impl Network {
 				let get_node_attrs = |_graph, (_idx, station_id): (NodeIndex, &StationQid)| {
 					format!(
 						r#"pos = "{}!" fontsize = 12.0"#,
-						self.data.stations[station_id].coords
+						self.data.stations[station_id].coords,
 					)
 				};
-				let get_edge_attrs = |graph: &Graph<StationQid, LineQid>,
-				                      edge: EdgeReference<'_, LineQid>| {
+				let get_edge_attrs = |graph: &Graph<StationQid, LineId>,
+				                      edge: EdgeReference<'_, LineId>| {
 					let (src, dst) = graph.edge_endpoints(edge.id()).unwrap();
 					// eprintln!("{:?} {:?} {:?}", edge.weight(), graph[src], graph[dst]);
 					format!(
 						r##"color = "#{}" penwidth = 2.0"##,
-						self.data.lines[edge.weight()].color
+						self.data.lines[edge.weight().index()].color
 					)
 				};
 				let dot = Dot::with_attr_getters(
@@ -125,13 +121,14 @@ impl Network {
 }
 
 pub struct InvertedNetwork {
-	pub graph: Graph<LineQid, StationQid>,
+	pub graph: Graph<LineId, StationQid>,
 }
 
 impl From<&Network> for InvertedNetwork {
 	fn from(net: &Network) -> Self {
-		let mut output_map: HashMap<([NodeIndex; 2], LineQid), NodeIndex> = HashMap::new();
 		let mut graph = Graph::new();
+
+		let mut transition_nodes = HashMap::<([NodeIndex; 2], _), NodeIndex>::new();
 
 		for edge_idx in net.graph.edge_indices() {
 			let line_qid = net.graph[edge_idx];
@@ -139,7 +136,7 @@ impl From<&Network> for InvertedNetwork {
 			let mut idx = ([src, target], line_qid);
 			idx.0.sort();
 
-			let transition_node = *output_map
+			let transition_node = *transition_nodes
 				.entry(idx)
 				.or_insert_with(|| graph.add_node(line_qid));
 
@@ -150,7 +147,7 @@ impl From<&Network> for InvertedNetwork {
 				let mut target_idx = ([target_src, target_target], target_line_qid);
 				target_idx.0.sort();
 
-				let target_transition_node = *output_map
+				let target_transition_node = *transition_nodes
 					.entry(target_idx)
 					.or_insert_with(|| graph.add_node(target_line_qid));
 
@@ -171,25 +168,29 @@ impl InvertedNetwork {
 
 		impl fmt::Display for NetworkDisplay<'_> {
 			fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-				let get_node_attrs = |_graph, (_idx, line_id): (NodeIndex, &LineQid)| {
+				let get_node_attrs = |_graph, (_id, line_id): (NodeIndex, &LineId)| {
 					format!(
-						r##"color = "#{}" fontsize = 12.0"##,
-						self.data.lines[line_id].color
+						r##"style = "filled" fillcolor = "#{}" fontsize = 12.0 tooltip = "{}""##,
+						self.data.lines[line_id.index()].color,
+						self.data.lines[line_id.index()].name,
 					)
 				};
-				let get_edge_attrs = |_graph, _edge: EdgeReference<'_, StationQid>| {
-					r##"fontsize = 12.0"##.to_string()
+				let get_edge_attrs = |_graph, edge: EdgeReference<'_, StationQid>| {
+					format!(
+						r##"fontsize = 12.0 tooltip = "{}""##,
+						self.data.stations[edge.weight()].name,
+					)
 				};
 				let dot = Dot::with_attr_getters(
 					&self.inv_net.graph,
-					&[],
+					&[Config::NodeNoLabel, Config::EdgeNoLabel],
 					&get_edge_attrs,
 					&get_node_attrs,
 				);
 
 				dot.graph_fmt(
 					f,
-					|line_id, f| f.write_str(&self.data.lines[line_id].name),
+					|line_id, f| f.write_str(&self.data.lines[line_id.index()].name),
 					|station_id, f| f.write_str(&self.data.stations[station_id].name),
 				)
 			}

@@ -1,13 +1,20 @@
 use csv::DeserializeRecordsIntoIter;
 use reqwest::blocking::Client;
 use serde::{Deserialize, de::DeserializeOwned};
-use std::{collections::HashMap, fmt, fs, io::Write, path::Path};
+use std::{
+	collections::{BTreeMap, HashMap},
+	fmt, fs,
+	io::Write,
+	path::Path,
+};
 
 const CACHE_DIR: &str = ".cache/queries";
 
+#[derive(Debug)]
 pub struct SubwayData {
-	pub lines: HashMap<types::LineQid, Line>,
-	pub stations: HashMap<types::StationQid, Station>,
+	pub lines: Vec<Line>,
+	pub line_map: BTreeMap<types::LineQid, LineId>,
+	pub stations: BTreeMap<types::StationQid, Station>,
 
 	pub connections: Vec<Connection>,
 }
@@ -24,20 +31,24 @@ impl SubwayData {
 		let stations_query = fetch_query::<Station>("stations", &stations_query)?;
 		let connections_query = fetch_query::<Connection>("connections", &connections_query)?;
 
-		let mut lines = HashMap::new();
-		let mut stations = HashMap::new();
+		let mut lines = Vec::new();
+		let mut line_map = BTreeMap::new();
+		let mut stations = BTreeMap::new();
 		let mut connections = Vec::new();
 
 		// Collect all lines
-		for line in lines_query {
+		for (i, line) in lines_query.enumerate() {
 			let line = line?;
-			lines.insert(line.id, line);
+
+			let line_id = LineId::new(i);
+			line_map.insert(line.qid, line_id);
+			lines.push(line);
 		}
 
 		// Collect all stations
 		for station in stations_query {
 			let station = station?;
-			stations.insert(station.id, station);
+			stations.insert(station.qid, station);
 		}
 
 		// Link stations
@@ -48,9 +59,16 @@ impl SubwayData {
 
 		Ok(Self {
 			lines,
+			line_map,
 			stations,
 			connections,
 		})
+	}
+}
+
+impl SubwayData {
+	pub fn nb_lines(&self) -> u32 {
+		self.lines.len() as u32
 	}
 }
 
@@ -92,10 +110,29 @@ where
 	Ok(csv.into_deserialize())
 }
 
+/// Store a line number between 0 and 63.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct LineId(u8);
+
+impl LineId {
+	fn new(index: usize) -> Self {
+		assert!(index < 32, "number of lines must stay under 32");
+		Self(index as u8)
+	}
+
+	pub fn bitmask(&self) -> u32 {
+		1u32 << self.0
+	}
+
+	pub fn index(&self) -> usize {
+		self.0 as usize
+	}
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Line {
-	pub id: types::LineQid,
+	pub qid: types::LineQid,
 	pub name: String,
 	pub color: String,
 }
@@ -109,7 +146,7 @@ impl fmt::Display for Line {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Station {
-	pub id: types::StationQid,
+	pub qid: types::StationQid,
 	pub name: String,
 	pub coords: types::Point,
 }
@@ -123,9 +160,9 @@ impl fmt::Display for Station {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
-	pub station_id: types::StationQid,
-	pub adjacent_station_id: types::StationQid,
-	pub line_id: types::LineQid,
+	pub station_qid: types::StationQid,
+	pub adjacent_station_qid: types::StationQid,
+	pub line_qid: types::LineQid,
 }
 
 pub mod types {
@@ -136,7 +173,7 @@ pub mod types {
 		de::{self, Visitor},
 	};
 
-	#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 	pub struct Qid(pub u32);
 
 	impl fmt::Display for Qid {
@@ -145,10 +182,10 @@ pub mod types {
 		}
 	}
 
-	#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 	pub struct LineQid(pub Qid);
 
-	#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 	pub struct StationQid(pub Qid);
 
 	impl<'de> Deserialize<'de> for Qid {
