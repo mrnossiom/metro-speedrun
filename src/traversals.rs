@@ -128,44 +128,76 @@ pub struct InvertedBfs {}
 
 impl InvertedBfs {
 	pub fn traverse(inv_net: &InvertedNetwork, data: &SubwayData) {
-		let InvertedNetwork { graph } = &inv_net;
+		for start_node_idx in inv_net.graph.node_indices() {
+			println!(
+				"node {}/{}",
+				start_node_idx.index() + 1,
+				inv_net.graph.node_count()
+			);
+			Self::iddfs(inv_net, data, start_node_idx);
+		}
+	}
 
-		let mut queue = VecDeque::new();
+	fn iddfs(inv_net: &InvertedNetwork, data: &SubwayData, start_node_idx: NodeIndex) {
+		const MIN_DEPTH: usize = 25;
+		const MAX_DEPTH: usize = 30; // A reasonable upper bound to prevent infinite execution
 
-		let mut parents = vec![NodeIndex::default(); graph.node_count()];
-		let mut lines = vec![u32::default(); graph.node_count()];
+		for depth_limit in MIN_DEPTH..=MAX_DEPTH {
+			println!("depth {}/{}", depth_limit, MAX_DEPTH);
 
-		for start_node_idx in graph.node_indices() {
-			queue.clear();
-			parents.fill(Default::default());
-			lines.fill(Default::default());
+			let mut path = Vec::with_capacity(depth_limit);
+			path.push(start_node_idx);
 
-			queue.push_back(start_node_idx);
+			let lines = inv_net.graph[start_node_idx].bitmask();
 
-			while let Some(node_idx) = queue.pop_front() {
-				let current_lines = lines[node_idx.index()] | graph[node_idx].bitmask();
+			// Depth remaining is `depth_limit - 1` because the path already contains the start node.
+			Self::dfs_recursive(
+				inv_net,
+				data,
+				start_node_idx,
+				&mut path,
+				lines,
+				depth_limit.saturating_sub(1),
+			);
+		}
+	}
 
-				if current_lines.count_ones() > 8 {
-					println!("{:016b}", current_lines);
-
-					let mut idx = node_idx;
-					while parents[idx.index()] != start_node_idx {
-						print!("{} ", idx.index());
-						idx = parents[idx.index()];
-					}
-					println!()
+	fn dfs_recursive(
+		inv_net: &InvertedNetwork,
+		data: &SubwayData,
+		current_node_idx: NodeIndex,
+		path: &mut Vec<NodeIndex>,
+		lines: u32,
+		depth_remaining: usize,
+	) {
+		if depth_remaining == 0 {
+			// We have reached the target depth for this iteration.
+			if lines.count_ones() == data.nb_lines() {
+				// Condition met, print the path.
+				print!("Path (len {}, lines {:016b}): ", path.len(), lines);
+				for node in path {
+					print!("{} ", node.index());
 				}
+				println!();
+			}
+			return;
+		}
 
-				for neighbor in graph.neighbors(node_idx) {
-					if lines[neighbor.index()] != 0 {
-						continue;
-					}
+		for neighbor in inv_net.graph.neighbors(current_node_idx) {
+			if !path.contains(&neighbor) {
+				path.push(neighbor);
+				let new_lines = lines | inv_net.graph[neighbor].bitmask();
 
-					lines[neighbor.index()] = current_lines;
-					parents[neighbor.index()] = node_idx;
+				Self::dfs_recursive(
+					inv_net,
+					data,
+					neighbor,
+					path,
+					new_lines,
+					depth_remaining - 1,
+				);
 
-					queue.push_back(neighbor);
-				}
+				path.pop(); // Backtrack
 			}
 		}
 	}
