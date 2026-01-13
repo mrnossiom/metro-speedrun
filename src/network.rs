@@ -49,8 +49,10 @@ impl From<&SubwayData> for Network {
 impl Network {
 	/// Remove every station that is useless in our optimized subway traversal,
 	/// i.e. stations that are on line ends
-	pub fn strip_line_ends(&mut self) {
+	pub fn strip_line_ends(&mut self) -> u32 {
 		// We could do a better O(n) algorithm with a stable graph
+
+		let mut nb_stripped = 0;
 
 		// TODO: this suppresses the 3bis loop part that we don't care about still, the transformation is illegal
 		'main: loop {
@@ -71,11 +73,14 @@ impl Network {
 					&& self.graph.neighbors(neighbor).count() <= 2
 				{
 					self.graph.remove_node(node_idx);
+					nb_stripped += 1;
 					continue 'main;
 				}
 			}
 			break 'main;
 		}
+
+		nb_stripped
 	}
 
 	pub fn to_dot(&self, data: &SubwayData) -> String {

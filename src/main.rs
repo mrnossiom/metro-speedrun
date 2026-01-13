@@ -2,6 +2,7 @@ use std::{fs, path::PathBuf};
 
 use clap::Parser;
 
+mod glpk;
 mod network;
 mod queries;
 mod traversals;
@@ -13,39 +14,52 @@ use crate::{
 
 #[derive(clap::Parser)]
 struct Args {
+	#[clap(default_value = ".cache")]
+	cache_dir: PathBuf,
+
 	#[clap(default_value = "output")]
-	outdir: PathBuf,
+	output_dir: PathBuf,
 }
 
-const PARIS_SUBWAY_QID: &str = "Q50716";
-const TOULOUSE_SUBWAY_QID: &str = "Q1129485";
-const MARSEILLE_SUBWAY_QID: &str = "Q275267";
-const LONDON_SUBWAY_QID: &str = "Q20075";
-const TOKYO_SUBWAY_QID: &str = "Q962135";
-const NYC_SUBWAY_QID: &str = "Q7733";
-const BERLIN_SUBWAY_QID: &str = "Q68646";
+mod qid {
+	#![allow(dead_code)]
+	pub const PARIS_SUBWAY: &str = "Q50716";
+	pub const TOULOUSE_SUBWAY: &str = "Q1129485";
+	pub const MARSEILLE_SUBWAY: &str = "Q275267";
+	pub const LONDON_SUBWAY: &str = "Q20075";
+	pub const TOKYO_SUBWAY: &str = "Q962135";
+	pub const NYC_SUBWAY: &str = "Q7733";
+	pub const BERLIN_SUBWAY: &str = "Q68646";
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = Args::parse();
 
-	fs::create_dir_all(&args.outdir)?;
+	fs::create_dir_all(&args.output_dir)?;
 
-	let data = SubwayData::fetch(PARIS_SUBWAY_QID)?;
+	let data = SubwayData::fetch(qid::PARIS_SUBWAY)?;
 
-	let mut network = Network::from(&data);
-	fs::write(args.outdir.join("network.dot"), network.to_dot(&data))?;
+	let network = Network::from(&data);
+	fs::write(args.output_dir.join("network.dot"), network.to_dot(&data))?;
 
-	network.strip_line_ends();
+	let mut stripped_network = network;
+	let nb_stripped = stripped_network.strip_line_ends();
+	println!("stripped {} useless nodes from the network", nb_stripped);
+
 	fs::write(
-		args.outdir.join("network.stripped.dot"),
-		network.to_dot(&data),
+		args.output_dir.join("network.stripped.dot"),
+		stripped_network.to_dot(&data),
 	)?;
 
-	let inv_network = InvertedNetwork::from(&network);
-	fs::write(args.outdir.join("inverted.dot"), inv_network.to_dot(&data))?;
+	let inv_network = InvertedNetwork::from(&stripped_network);
+	fs::write(
+		args.output_dir.join("inverted.dot"),
+		inv_network.to_dot(&data),
+	)?;
 
+	glpk::PaperOpt::invoke(&stripped_network, &data)?;
 	// traversals::NormalDfs::traverse(&network, &data);
-	traversals::InvertedBfs::traverse(&inv_network, &data);
+	// traversals::InvertedBfs::traverse(&inv_network, &data);
 
 	Ok(())
 }

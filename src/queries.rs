@@ -1,12 +1,7 @@
 use csv::DeserializeRecordsIntoIter;
 use reqwest::blocking::Client;
 use serde::{Deserialize, de::DeserializeOwned};
-use std::{
-	collections::{BTreeMap, HashMap},
-	fmt, fs,
-	io::Write,
-	path::Path,
-};
+use std::{collections::BTreeMap, fmt, fs, io::Write, path::Path};
 
 const CACHE_DIR: &str = ".cache/queries";
 
@@ -174,7 +169,13 @@ pub mod types {
 	};
 
 	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-	pub struct Qid(pub u32);
+	pub struct Qid(u32);
+
+	impl Qid {
+		pub fn id(&self) -> u32 {
+			self.0
+		}
+	}
 
 	impl fmt::Display for Qid {
 		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -183,10 +184,36 @@ pub mod types {
 	}
 
 	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
-	pub struct LineQid(pub Qid);
+	pub struct LineQid(Qid);
+
+	impl fmt::Display for LineQid {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			self.0.fmt(f)
+		}
+	}
+
+	impl std::ops::Deref for LineQid {
+		type Target = Qid;
+		fn deref(&self) -> &Self::Target {
+			&self.0
+		}
+	}
 
 	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
-	pub struct StationQid(pub Qid);
+	pub struct StationQid(Qid);
+
+	impl fmt::Display for StationQid {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			self.0.fmt(f)
+		}
+	}
+
+	impl std::ops::Deref for StationQid {
+		type Target = Qid;
+		fn deref(&self) -> &Self::Target {
+			&self.0
+		}
+	}
 
 	impl<'de> Deserialize<'de> for Qid {
 		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -209,6 +236,7 @@ pub mod types {
 				{
 					let qid = value
 						.strip_prefix("http://www.wikidata.org/entity/Q")
+						.or_else(|| value.strip_prefix("Q"))
 						.ok_or_else(|| E::custom(format!("Invalid format: {}", value)))?
 						.parse::<u32>()
 						.map_err(|_| E::custom("Qid is not a valid u32"))?;

@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, mem};
+use std::mem;
 
 use petgraph::{Graph, graph::NodeIndex, visit::EdgeRef};
 

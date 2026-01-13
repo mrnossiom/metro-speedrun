@@ -36,6 +36,8 @@
 
               csvlens
               graphviz
+
+              glpk
             ];
 
             buildInputs = with pkgs; [
