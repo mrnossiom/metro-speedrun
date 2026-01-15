@@ -5,6 +5,7 @@ use clap::Parser;
 mod glpk;
 mod network;
 mod queries;
+mod scip;
 mod traversals;
 
 use crate::{
@@ -44,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut stripped_network = network;
 	let nb_stripped = stripped_network.strip_line_ends();
-	println!("stripped {} useless nodes from the network", nb_stripped);
+	println!("stripped {} irrelevant nodes from the network", nb_stripped);
 
 	fs::write(
 		args.output_dir.join("network.stripped.dot"),
@@ -57,8 +58,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		inv_network.to_dot(&data),
 	)?;
 
-	glpk::PaperOpt::invoke(&stripped_network, &data)?;
-	// traversals::NormalDfs::traverse(&network, &data);
+	scip::PaperOpt::invoke(&stripped_network, &data)?;
+	// glpk::PaperOpt::invoke(&stripped_network, &data)?;
+	// traversals::NormalDfs::traverse(&stripped_network, &data);
 	// traversals::InvertedBfs::traverse(&inv_network, &data);
 
 	Ok(())

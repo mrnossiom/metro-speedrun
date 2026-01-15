@@ -22,7 +22,6 @@
       formatter = forAllPkgs (pkgs: pkgs.nixpkgs-fmt);
 
       devShells = forAllPkgs (pkgs:
-        with pkgs.lib;
         let
           file-rust-toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
           rust-toolchain = file-rust-toolchain.override { extensions = [ "rust-analyzer" ]; };
@@ -38,14 +37,18 @@
               graphviz
 
               glpk
+              clang
             ];
 
             buildInputs = with pkgs; [
               openssl
+              scipopt-scip
             ];
 
+            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];
+
             RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
-            LD_LIBRARY_PATH = makeLibraryPath buildInputs;
+            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
 
             # RUST_LOG = "";
           };
