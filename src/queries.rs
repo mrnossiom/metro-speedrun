@@ -106,7 +106,7 @@ where
 }
 
 /// Store a line number between 0 and 63.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LineId(u8);
 
 impl LineId {
