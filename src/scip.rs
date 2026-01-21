@@ -1,8 +1,12 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fs};
 
+use petgraph::visit::EdgeRef;
 use russcip::{Solution, prelude::*};
 
-use crate::{network::Network, queries::SubwayData};
+use crate::{
+	network::{Arc, Network},
+	queries::SubwayData,
+};
 
 struct SolutionHandler {}
 
@@ -13,18 +17,20 @@ impl Eventhdlr for SolutionHandler {
 
 	fn execute(&mut self, model: Model<Solving>, eventhdlr: SCIPEventhdlr, event: Event) {
 		match event.event_type() {
-			EventMask::SOL_FOUND => {}
-			EventMask::BEST_SOL_FOUND => {}
+			EventMask::SOL_FOUND => {
+				println!("sol");
+			}
+			EventMask::BEST_SOL_FOUND => {
+				println!("best sol");
+			}
 			_ => {}
 		}
-
-		// event.var().unwrap().sol_val()
 	}
 }
 
-struct MyConshdlr;
+struct MultipleSolutions {}
 
-impl Conshdlr for MyConshdlr {
+impl Conshdlr for MultipleSolutions {
 	fn check(
 		&mut self,
 		model: Model<Solving>,
@@ -32,6 +38,7 @@ impl Conshdlr for MyConshdlr {
 		solution: &Solution,
 	) -> bool {
 		true
+		// false
 	}
 
 	fn enforce(&mut self, model: Model<Solving>, conshdlr: SCIPConshdlr) -> ConshdlrResult {
@@ -53,13 +60,12 @@ impl PaperOpt {
 		let lines = data.lines.iter().map(|line| line.qid).collect::<Vec<_>>();
 		let arcs = network
 			.graph
-			.raw_edges()
-			.iter()
+			.edge_references()
 			.map(|edge| {
 				(
 					network.graph[edge.source()],
 					network.graph[edge.target()],
-					data.lines[edge.weight.index()].qid,
+					data.lines[edge.weight().index()].qid,
 				)
 			})
 			.collect::<Vec<_>>();
@@ -76,6 +82,10 @@ impl PaperOpt {
 					.obj(1.0);
 				(arc, mdl.add(binary_var))
 			})
+			.collect::<BTreeMap<_, _>>();
+		let rfollows = follows
+			.iter()
+			.map(|(k, v)| (i32::try_from(v.index()).unwrap(), *k))
 			.collect::<BTreeMap<_, _>>();
 		let source_follows = stations
 			.iter()
@@ -165,26 +175,76 @@ impl PaperOpt {
 			mdl.add(c);
 		}
 
-		mdl.include_conshdlr(
-			"record and search of other limits",
-			"",
-			-1,
-			-1,
-			Box::new(MyConshdlr),
-		);
+		// #4 Flow capacity
+		for arc in &arcs {
+			let mut c = cons().ge(0.0);
+			c = c.coef(&follows[&arc], (stations.len() + 2) as f64);
+			c = c.coef(&flows[&arc], -1.0);
+			mdl.add(c);
+		}
 
-		mdl.include_eventhdlr(
-			"solution handler",
-			"handle all solutions",
-			Box::new(SolutionHandler {}),
-		);
+		// #5 Flow linearity
+		for station in &stations {
+			let mut c = cons().ge(0.0);
+			for arc in arcs.iter().filter(|(_, dst, _)| dst == *station) {
+				c = c.coef(&flows[arc], 1.0);
+			}
+			for arc in arcs.iter().filter(|(src, _, _)| src == *station) {
+				c = c.coef(&flows[arc], -1.0);
+			}
+			c = c.coef(&ys[station], -1.0);
+			mdl.add(c);
+		}
+
+		// #6 Flow connectivity
+		for station in &stations {
+			let mut c = cons().ge(0.0);
+			c = c.coef(&ys[station], 1.0);
+			for arc in arcs.iter().filter(|(_, dst, _)| dst == *station) {
+				c = c.coef(&follows[arc], -1.0);
+			}
+			for arc in arcs.iter().filter(|(src, _, _)| src == *station) {
+				c = c.coef(&follows[arc], -1.0);
+			}
+			mdl.add(c);
+		}
+
+		// Minimize variables with respect to their objective coef
+		mdl = mdl.minimize();
+
+		let cons_handler = MultipleSolutions {};
+		mdl.include_conshdlr("", "", -1, -1, Box::new(cons_handler));
+		let sol_handler = SolutionHandler {};
+		mdl.include_eventhdlr("", "", Box::new(sol_handler));
 
 		mdl = mdl.show_output();
 
 		let mdl = mdl.solve();
 
-		dbg!(mdl.get_sols());
+		let solution = mdl.best_sol().unwrap();
+
+		let path = solution
+			.as_id_map()
+			.keys()
+			// ignore dummy follows
+			.flat_map(|var| rfollows.get(var))
+			.cloned()
+			.cloned()
+			.collect::<Vec<_>>();
+
+		fs::write("foo", format_solution(&path))?;
 
 		Ok(())
 	}
+}
+
+fn format_solution(arcs: &[Arc]) -> String {
+	std::fmt::from_fn(|f| {
+		writeln!(f, "source,target,line")?;
+		for (source, target, line) in arcs {
+			writeln!(f, "{source},{target},{line}")?;
+		}
+		Ok(())
+	})
+	.to_string()
 }

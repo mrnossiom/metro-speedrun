@@ -24,9 +24,9 @@ s.t. TargetExpectDegree:
 s.t. VisitLineAtLeastOnce{l in Lines}:
 	sum{(u,v,l) in Arcs} follow[u,v,l] >= 1;
 
-s.t. ArcVisited{(u,v,l) in Arcs}:
+s.t. FlowCapacity{(u,v,l) in Arcs}:
 	card(Stations) * follow[u,v,l] >= flow[u,v,l];
-s.t. FlowCapacity{v in Stations diff {"source"}}:
+s.t. FlowLinearity{v in Stations diff {"source"}}:
 	sum{(u,v,l) in Arcs} flow[u,v,l] - sum{(v,w,l) in Arcs} flow[v,w,l] >= y[v];
 s.t. FlowConnectivity{v in Stations}:
 	y[v] - sum{(u,v,l) in Arcs} follow[u,v,l] - sum{(v,w,l) in Arcs} follow[v,w,l] >= 0;

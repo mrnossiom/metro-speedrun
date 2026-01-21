@@ -1,7 +1,6 @@
 use std::{
 	collections::{BTreeMap, BTreeSet, HashMap},
 	fmt,
-	sync::Mutex,
 };
 
 use petgraph::{
