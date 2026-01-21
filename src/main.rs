@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 		inv_network.to_dot(&data),
 	)?;
 
-	scip::PaperOpt::invoke(&stripped_network, &data)?;
+	// scip::PaperOpt::invoke(&stripped_network, &data)?;
 	// glpk::PaperOpt::invoke(&stripped_network, &data)?;
 	// traversals::NormalDfs::traverse(&stripped_network, &data);
 	// traversals::InvertedBfs::traverse(&inv_network, &data);

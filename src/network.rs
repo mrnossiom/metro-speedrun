@@ -4,7 +4,7 @@ use std::{
 };
 
 use petgraph::{
-	Graph,
+	Direction, Graph,
 	dot::{Config, Dot},
 	graph::{EdgeReference, NodeIndex},
 	visit::EdgeRef,
@@ -47,30 +47,59 @@ impl From<&SubwayData> for Network {
 }
 
 impl Network {
-	/// Remove every station that is useless in our optimized subway traversal,
+	/// Remove every station that is irrelevant to the subway problem,
 	/// i.e. stations that are on line ends
 	pub fn strip_line_ends(&mut self) -> u32 {
 		// We could do a better O(n) algorithm with a stable graph
 
 		let mut nb_stripped = 0;
 
-		// TODO: this suppresses the 3bis loop part that we don't care about still, the transformation is illegal
 		'main: loop {
 			for node_idx in self.graph.node_indices() {
-				let mut neighbors = self.graph.neighbors(node_idx);
-				let neighbor = neighbors.next();
-				// TODO: this is not correct in theory but only affects "Chardon-Lagache"
-				if neighbor.is_none() {
-					self.graph.remove_node(node_idx);
-					continue 'main;
+				let in_edges = self
+					.graph
+					.edges_directed(node_idx, Direction::Incoming)
+					.map(|edge| {
+						let (neighbor, _) = self.graph.edge_endpoints(edge.id()).unwrap();
+						let line = self.graph[edge.id()];
+						(neighbor, line)
+					});
+				let out_edges = self
+					.graph
+					.edges_directed(node_idx, Direction::Outgoing)
+					.map(|edge| {
+						let (_, neighbor) = self.graph.edge_endpoints(edge.id()).unwrap();
+						let line = self.graph[edge.id()];
+						(neighbor, line)
+					});
+
+				#[derive(Debug)]
+				enum LineNeighbors {
+					None,
+					One { neighbor: NodeIndex, line: LineId },
+					Many,
 				}
-				if let Some(neighbor) = neighbor
-					// only one neighbor
-					&& neighbors.next().is_none()
-					// and this neighbor connection just to one another station
-					// 
-					// we assume there is no subway line that is only connected to the terminus of another line
-					&& self.graph.neighbors(neighbor).count() <= 2
+				let neighbors =
+					in_edges
+						.chain(out_edges)
+						.fold(LineNeighbors::None, |n, (neighbor, line)| match n {
+							LineNeighbors::None => LineNeighbors::One { neighbor, line },
+							current @ LineNeighbors::One {
+								neighbor: cur_neighbor,
+								line: cur_line,
+							} if cur_neighbor == neighbor && cur_line == line => current,
+							_ => LineNeighbors::Many,
+						});
+
+				if let LineNeighbors::None = &neighbors {
+					self.graph.remove_node(node_idx);
+					nb_stripped += 1;
+					continue 'main;
+				} else if let LineNeighbors::One { neighbor: target, line } = neighbors
+					// and this one neighbor is only connected to the same line
+					&& self.graph.edges_directed(target, Direction::Outgoing)
+						.chain(self.graph.edges_directed(target, Direction::Incoming))
+						.all(|nline| *nline.weight() == line)
 				{
 					self.graph.remove_node(node_idx);
 					nb_stripped += 1;
