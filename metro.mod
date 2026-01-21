@@ -32,12 +32,14 @@ s.t. FlowConnectivity{v in Stations}:
 	y[v] - sum{(u,v,l) in Arcs} follow[u,v,l] - sum{(v,w,l) in Arcs} follow[v,w,l] >= 0;
 
 minimize NbTransitions:
-	sum{(u, v, l) in Arcs} follow[u,v,l];
+	# remove dummy transition
+	sum{(u, v, l) in Arcs} follow[u,v,l] - 2;
 
 solve;
 
 for {(u,v,l) in Arcs : follow[u,v,l] && l in RealLines}
 {
+	printf "source,target,line\n";
 	printf "%s,%s,%s\n", u, v, l;
 }
 

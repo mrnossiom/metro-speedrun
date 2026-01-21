@@ -4,11 +4,8 @@ use csv::DeserializeRecordsIntoIter;
 use serde::de::DeserializeOwned;
 
 use crate::{
-	network::Network,
-	queries::{
-		SubwayData,
-		types::{LineQid, StationQid},
-	},
+	network::{Arc, Network},
+	queries::SubwayData,
 };
 
 const CACHE_DIR: &str = ".cache/glpsol";
@@ -54,8 +51,7 @@ end;
 			arcs.join("\n"),
 		);
 
-		let result =
-			invoke_optimizer::<(StationQid, StationQid, LineQid)>("metro", model, &model_data)?;
+		let result = invoke_optimizer::<Arc>("metro", model, &model_data)?;
 
 		println!();
 		for arcs_path in result.into_iter() {

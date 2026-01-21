@@ -1,6 +1,7 @@
 use std::{
-	collections::{BTreeMap, HashMap},
+	collections::{BTreeMap, BTreeSet, HashMap},
 	fmt,
+	sync::Mutex,
 };
 
 use petgraph::{
@@ -10,8 +11,12 @@ use petgraph::{
 	visit::EdgeRef,
 };
 
-use crate::queries::{LineId, SubwayData, types::StationQid};
+use crate::queries::{
+	LineId, SubwayData,
+	types::{LineQid, StationQid},
+};
 
+#[derive(Clone)]
 pub struct Network {
 	pub graph: Graph<StationQid, LineId>,
 }
@@ -45,6 +50,8 @@ impl From<&SubwayData> for Network {
 		Self { graph }
 	}
 }
+
+pub type Arc = (StationQid, StationQid, LineQid);
 
 impl Network {
 	/// Remove every station that is irrelevant to the subway problem,
@@ -151,6 +158,61 @@ impl Network {
 		}
 
 		NetworkDisplay { net: self, data }.to_string()
+	}
+
+	pub fn to_dot_arcs(&self, data: &SubwayData, arcs: &BTreeSet<Arc>) -> String {
+		struct NetworkDisplay<'a> {
+			net: &'a Network,
+			data: &'a SubwayData,
+			arcs: &'a BTreeSet<Arc>,
+		}
+
+		impl fmt::Display for NetworkDisplay<'_> {
+			fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+				let get_node_attrs = |_graph, (_idx, station_id): (NodeIndex, &StationQid)| {
+					format!(
+						r#"pos = "{}!" fontsize = 12.0"#,
+						self.data.stations[station_id].coords,
+					)
+				};
+				let get_edge_attrs = |graph: &Graph<StationQid, LineId>,
+				                      edge: EdgeReference<'_, LineId>| {
+					let (src, dst) = graph.edge_endpoints(edge.id()).unwrap();
+					// eprintln!("{:?} {:?} {:?}", edge.weight(), graph[src], graph[dst]);
+					format!(
+						r##"color = "#{}" penwidth = 2.0"##,
+						if self.arcs.contains(&(
+							self.net.graph[src],
+							self.net.graph[dst],
+							self.data.lines[edge.weight().index()].qid
+						)) {
+							&self.data.lines[edge.weight().index()].color
+						} else {
+							"ccc"
+						}
+					)
+				};
+				let dot = Dot::with_attr_getters(
+					&self.net.graph,
+					&[Config::EdgeNoLabel],
+					&get_edge_attrs,
+					&get_node_attrs,
+				);
+
+				dot.graph_fmt(
+					f,
+					|station_id, f| f.write_str(&self.data.stations[station_id].name),
+					|_line, _f| Ok(()),
+				)
+			}
+		}
+
+		NetworkDisplay {
+			net: self,
+			data,
+			arcs,
+		}
+		.to_string()
 	}
 }
 

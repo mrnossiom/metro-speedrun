@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::{
+	collections::BTreeSet,
+	fs,
+	path::{Path, PathBuf},
+};
 
 use clap::Parser;
 
@@ -9,17 +13,20 @@ mod scip;
 mod traversals;
 
 use crate::{
-	network::{InvertedNetwork, Network},
+	network::{Arc, InvertedNetwork, Network},
 	queries::SubwayData,
 };
 
 #[derive(clap::Parser)]
 struct Args {
-	#[clap(default_value = ".cache")]
+	#[clap(long, default_value = ".cache")]
 	cache_dir: PathBuf,
 
-	#[clap(default_value = "output")]
+	#[clap(long, default_value = "output")]
 	output_dir: PathBuf,
+
+	#[clap(long)]
+	solution_path: Option<PathBuf>,
 }
 
 mod qid {
@@ -36,27 +43,36 @@ mod qid {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = Args::parse();
 
+	fs::remove_dir_all(&args.output_dir)?;
 	fs::create_dir_all(&args.output_dir)?;
 
 	let data = SubwayData::fetch(qid::PARIS_SUBWAY)?;
 
+	let path = args.output_dir.join("network.dot");
 	let network = Network::from(&data);
-	fs::write(args.output_dir.join("network.dot"), network.to_dot(&data))?;
+	println!("saving network to `{}`", path.display());
+	fs::write(path, network.to_dot(&data))?;
 
-	let mut stripped_network = network;
+	if let Some(solution_path) = args.solution_path {
+		let solution = read_solution(&solution_path)?;
+		let path = args.output_dir.join("network.solution.dot");
+		println!("saving solution to `{}`", path.display());
+		fs::write(path, network.to_dot_arcs(&data, &solution))?;
+		return Ok(());
+	}
+
+	let mut stripped_network = network.clone();
 	let nb_stripped = stripped_network.strip_line_ends();
 	println!("stripped {} irrelevant nodes from the network", nb_stripped);
 
-	fs::write(
-		args.output_dir.join("network.stripped.dot"),
-		stripped_network.to_dot(&data),
-	)?;
+	let path = args.output_dir.join("network.stripped.dot");
+	println!("saving stripped network to `{}`", path.display());
+	fs::write(path, stripped_network.to_dot(&data))?;
 
+	let path = args.output_dir.join("inverted.dot");
+	println!("saving inverted network to `{}`", path.display());
 	let inv_network = InvertedNetwork::from(&stripped_network);
-	fs::write(
-		args.output_dir.join("inverted.dot"),
-		inv_network.to_dot(&data),
-	)?;
+	fs::write(path, inv_network.to_dot(&data))?;
 
 	// scip::PaperOpt::invoke(&stripped_network, &data)?;
 	// glpk::PaperOpt::invoke(&stripped_network, &data)?;
@@ -64,4 +80,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 	// traversals::InvertedBfs::traverse(&inv_network, &data);
 
 	Ok(())
+}
+
+fn read_solution(path: &Path) -> Result<BTreeSet<Arc>, Box<dyn std::error::Error>> {
+	let mut csv = csv::Reader::from_path(path)?;
+	let headers = csv.headers()?;
+	// TODO: change for a more elegant error, ensures that no line is interpreted as a header
+	assert_eq!(headers.as_slice(), "sourcetargetline");
+	let mut set = BTreeSet::new();
+	for arc in csv.deserialize::<Arc>() {
+		let arc = arc?;
+		set.insert(arc);
+	}
+	Ok(set)
 }
