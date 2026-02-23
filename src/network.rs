@@ -118,6 +118,7 @@ impl Network {
 		nb_stripped
 	}
 
+	/// Returns the current subway graph to the dot format
 	pub fn to_dot(&self, data: &SubwayData) -> String {
 		struct NetworkDisplay<'a> {
 			net: &'a Network,
@@ -126,16 +127,16 @@ impl Network {
 
 		impl fmt::Display for NetworkDisplay<'_> {
 			fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+				// TODO: include the raw qid in the graph tooltips
+
 				let get_node_attrs = |_graph, (_idx, station_id): (NodeIndex, &StationQid)| {
 					format!(
 						r#"pos = "{}!" fontsize = 12.0"#,
 						self.data.stations[station_id].coords,
 					)
 				};
-				let get_edge_attrs = |graph: &Graph<StationQid, LineId>,
+				let get_edge_attrs = |_graph: &Graph<StationQid, LineId>,
 				                      edge: EdgeReference<'_, LineId>| {
-					let (src, dst) = graph.edge_endpoints(edge.id()).unwrap();
-					// eprintln!("{:?} {:?} {:?}", edge.weight(), graph[src], graph[dst]);
 					format!(
 						r##"color = "#{}" penwidth = 2.0"##,
 						self.data.lines[edge.weight().index()].color
@@ -159,7 +160,12 @@ impl Network {
 		NetworkDisplay { net: self, data }.to_string()
 	}
 
-	pub fn to_dot_arcs(&self, data: &SubwayData, arcs: &BTreeSet<Arc>) -> String {
+	/// Returns the current subway graph to the dot format with only the given arcs colored
+	pub fn to_dot_with_selected_arcs_colored(
+		&self,
+		data: &SubwayData,
+		arcs: &BTreeSet<Arc>,
+	) -> String {
 		struct NetworkDisplay<'a> {
 			net: &'a Network,
 			data: &'a SubwayData,

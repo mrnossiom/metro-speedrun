@@ -1,4 +1,5 @@
 use csv::DeserializeRecordsIntoIter;
+use eyre::Context;
 use reqwest::blocking::Client;
 use serde::{Deserialize, de::DeserializeOwned};
 use std::{collections::BTreeMap, fmt, fs, io::Write, path::Path};
@@ -15,16 +16,19 @@ pub struct SubwayData {
 }
 
 impl SubwayData {
-	pub fn fetch(subway_qid: &str) -> Result<Self, Box<dyn std::error::Error>> {
+	pub fn fetch(subway_qid: &str) -> eyre::Result<Self> {
 		let lines_query = include_str!("../queries/lines.sparql").replace("{subway}", subway_qid);
 		let stations_query =
 			include_str!("../queries/stations.sparql").replace("{subway}", subway_qid);
 		let connections_query =
 			include_str!("../queries/connections.sparql").replace("{subway}", subway_qid);
 
-		let lines_query = fetch_query::<Line>("lines", &lines_query)?;
-		let stations_query = fetch_query::<Station>("stations", &stations_query)?;
-		let connections_query = fetch_query::<Connection>("connections", &connections_query)?;
+		let lines_query =
+			fetch_query::<Line>("lines", &lines_query).wrap_err("could not fetch lines")?;
+		let stations_query = fetch_query::<Station>("stations", &stations_query)
+			.wrap_err("could not fetch station")?;
+		let connections_query = fetch_query::<Connection>("connections", &connections_query)
+			.wrap_err("could not fetch connections")?;
 
 		let mut lines = Vec::new();
 		let mut line_map = BTreeMap::new();
@@ -33,7 +37,7 @@ impl SubwayData {
 
 		// Collect all lines
 		for (i, line) in lines_query.enumerate() {
-			let line = line?;
+			let line = line.wrap_err("could not deserialize line row")?;
 
 			let line_id = LineId::new(i);
 			line_map.insert(line.qid, line_id);
@@ -42,13 +46,13 @@ impl SubwayData {
 
 		// Collect all stations
 		for station in stations_query {
-			let station = station?;
+			let station = station.wrap_err("could not deserialize station row")?;
 			stations.insert(station.qid, station);
 		}
 
 		// Link stations
 		for connection in connections_query {
-			let connection = connection?;
+			let connection = connection.wrap_err("could not deserialize connection row")?;
 			connections.push(connection);
 		}
 
@@ -71,7 +75,7 @@ impl SubwayData {
 pub fn fetch_query<T>(
 	name: &str,
 	query: &str,
-) -> Result<DeserializeRecordsIntoIter<std::fs::File, T>, Box<dyn std::error::Error>>
+) -> eyre::Result<DeserializeRecordsIntoIter<std::fs::File, T>>
 where
 	T: DeserializeOwned,
 {
@@ -91,7 +95,8 @@ where
 			.header("User-Agent", "rust-wikidata-client/0.1")
 			.query(&[("query", query)])
 			.header("Accept", "text/csv")
-			.send()?
+			.send()
+			.wrap_err("could not query WikiData")?
 			.text()?;
 
 		let mut file = fs::File::create(&cache_file)?;
@@ -100,7 +105,7 @@ where
 		println!("query `{name}` cached in {cache_file}");
 	}
 
-	let csv = csv::Reader::from_path(&cache_file)?;
+	let csv = csv::Reader::from_path(&cache_file).wrap_err("could not read CSV file")?;
 
 	Ok(csv.into_deserialize())
 }
@@ -168,7 +173,7 @@ pub mod types {
 		de::{self, Visitor},
 	};
 
-	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+	#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 	pub struct Qid(u32);
 
 	impl Qid {
@@ -183,10 +188,22 @@ pub mod types {
 		}
 	}
 
-	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+	impl fmt::Debug for Qid {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			write!(f, "qid#{}", self.0)
+		}
+	}
+
+	#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 	pub struct LineQid(Qid);
 
 	impl fmt::Display for LineQid {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			self.0.fmt(f)
+		}
+	}
+
+	impl fmt::Debug for LineQid {
 		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 			self.0.fmt(f)
 		}
@@ -199,10 +216,16 @@ pub mod types {
 		}
 	}
 
-	#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+	#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 	pub struct StationQid(Qid);
 
 	impl fmt::Display for StationQid {
+		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+			self.0.fmt(f)
+		}
+	}
+
+	impl fmt::Debug for StationQid {
 		fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 			self.0.fmt(f)
 		}

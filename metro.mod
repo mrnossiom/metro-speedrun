@@ -32,7 +32,7 @@ s.t. FlowConnectivity{v in Stations}:
 	y[v] - sum{(u,v,l) in Arcs} follow[u,v,l] - sum{(v,w,l) in Arcs} follow[v,w,l] >= 0;
 
 minimize NbTransitions:
-	# remove dummy transition
+	# substract dummy transitions
 	sum{(u, v, l) in Arcs} follow[u,v,l] - 2;
 
 solve;

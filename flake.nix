@@ -4,6 +4,9 @@
 
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+
+    gitignore.url = "github:hercules-ci/gitignore.nix";
+    gitignore.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -11,9 +14,10 @@
       self,
       nixpkgs,
       rust-overlay,
+      gitignore,
     }:
     let
-      inherit (nixpkgs.lib) genAttrs;
+      inherit (nixpkgs.lib) genAttrs getExe;
 
       forAllSystems = genAttrs [
         "x86_64-linux"
@@ -21,6 +25,13 @@
         "aarch64-darwin"
       ];
       forAllPkgs = function: forAllSystems (system: function pkgs.${system});
+
+      mkApp = (
+        program: {
+          type = "app";
+          inherit program;
+        }
+      );
 
       pkgs = forAllSystems (
         system:
@@ -32,6 +43,15 @@
     in
     {
       formatter = forAllPkgs (pkgs: pkgs.nixfmt-tree);
+
+      packages = forAllPkgs (pkgs: rec {
+        default = metro-speedrun;
+        metro-speedrun = pkgs.callPackage ./package.nix { inherit gitignore; };
+      });
+      apps = forAllSystems (system: rec {
+        default = metro-speedrun;
+        metro-speedrun = mkApp (getExe self.packages.${system}.metro-speedrun);
+      });
 
       devShells = forAllPkgs (
         pkgs:
@@ -50,13 +70,12 @@
               graphviz
               glpk
 
-              openssl
               clang
               scipopt-scip
             ];
 
-            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];
             RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+            LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];
             SCIPOPTDIR = pkgs.scipopt-scip.out;
           };
         }

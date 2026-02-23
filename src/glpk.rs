@@ -1,6 +1,7 @@
-use std::{fs, io, path::Path, process::Command};
+use std::{fs, path::Path, process::Command};
 
 use csv::DeserializeRecordsIntoIter;
+use eyre::{Context, bail};
 use serde::de::DeserializeOwned;
 
 use crate::{
@@ -13,7 +14,7 @@ const CACHE_DIR: &str = ".cache/glpsol";
 pub struct PaperOpt {}
 
 impl PaperOpt {
-	pub fn invoke(network: &Network, data: &SubwayData) -> Result<(), Box<dyn std::error::Error>> {
+	pub fn invoke(network: &Network, data: &SubwayData) -> eyre::Result<()> {
 		let model = include_str!("../metro.mod");
 
 		let station_qids = data
@@ -72,7 +73,7 @@ fn invoke_optimizer<T>(
 	name: &str,
 	model: &str,
 	data: &str,
-) -> Result<DeserializeRecordsIntoIter<std::fs::File, T>, Box<dyn std::error::Error>>
+) -> eyre::Result<DeserializeRecordsIntoIter<std::fs::File, T>>
 where
 	T: DeserializeOwned,
 {
@@ -105,8 +106,8 @@ where
 		cmd.arg("--output").arg(&glpk_output);
 		cmd.arg("--display").arg(&cache_file);
 
-		if !cmd.status()?.success() {
-			return Err(io::Error::other("could not compute gmpl model").into());
+		if !cmd.status().wrap_err("could not run glpsol")?.success() {
+			bail!("could not compute gmpl model")
 		}
 
 		fs::remove_dir_all(glpk_dir)?;
