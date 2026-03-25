@@ -10,5 +10,5 @@ csv = "1"
 eyre = "0.6"
 petgraph = "0.8"
 reqwest = { version = "0.13", features = ["blocking", "query"] }
-russcip = "0.9"
+russcip = "0.11"
 serde = { version = "1", features = ["derive"] }

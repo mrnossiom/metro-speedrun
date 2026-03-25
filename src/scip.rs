@@ -246,7 +246,6 @@ impl PaperOpt {
 			let name_map = solution.as_name_map();
 
 			// SAFETY: this should not be held beyond the `free_transform` call
-			drop(solution);
 
 			fs::write(
 				self.output_path
@@ -293,6 +292,7 @@ fn dump_solution_path(
 	loop {
 		let (Arc(src, dst, line), _) = arcs
 			.iter()
+			// TODO: handle paths that go A -> B -> C -> B -> D, be careful not to skip the roundtrip
 			.find(|(Arc(src, _, _), _)| *src == current_src)
 			.wrap_err("could not transform to path, solution is malformed")?;
 

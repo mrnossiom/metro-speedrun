@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-unstable";
+    nixpkgs.url = "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
@@ -17,7 +17,7 @@
       gitignore,
     }:
     let
-      inherit (nixpkgs.lib) genAttrs getExe;
+      inherit (nixpkgs.lib) genAttrs;
 
       forAllSystems = genAttrs [
         "x86_64-linux"
@@ -25,13 +25,6 @@
         "aarch64-darwin"
       ];
       forAllPkgs = function: forAllSystems (system: function pkgs.${system});
-
-      mkApp = (
-        program: {
-          type = "app";
-          inherit program;
-        }
-      );
 
       pkgs = forAllSystems (
         system:
@@ -48,16 +41,12 @@
         default = metro-speedrun;
         metro-speedrun = pkgs.callPackage ./package.nix { inherit gitignore; };
       });
-      apps = forAllSystems (system: rec {
-        default = metro-speedrun;
-        metro-speedrun = mkApp (getExe self.packages.${system}.metro-speedrun);
-      });
 
       devShells = forAllPkgs (
         pkgs:
         let
           file-rust-toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-          rust-toolchain = file-rust-toolchain.override { extensions = [ "rust-analyzer" ]; };
+          rust-toolchain = file-rust-toolchain.override { extensions = [ "rust-analyzer"  "rust-src" ]; };
         in
         {
           default = pkgs.mkShell {
@@ -74,7 +63,10 @@
               scipopt-scip
             ];
 
-            RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+            shellHook = ''
+              echo -e "\nRead the README if you encounter any library linking issue."
+            '';
+
             LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];
             SCIPOPTDIR = pkgs.scipopt-scip.out;
           };
