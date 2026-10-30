@@ -64,7 +64,7 @@
             ];
 
             shellHook = ''
-              echo -e "\nRead the README if you encounter any library linking issue."
+              echo -e "\n\n⚠️ Read the README if you encounter any library linking issue."
             '';
 
             LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];

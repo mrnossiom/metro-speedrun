@@ -23,17 +23,17 @@ struct Args {
 	/// The WikiData Qid of the city whose subway we want to speedrun
 	city_qid: String,
 
-	/// Used to store intermediary artefacts
+	/// Directory used to store intermediary artefacts
 	#[clap(long, default_value = ".cache")]
-	cache_dir: PathBuf,
+	cache: PathBuf,
 
-	/// Most artefacts are printed in there
+	/// Directory where artefacts are written to
 	#[clap(long, default_value = "output")]
-	output_dir: PathBuf,
+	output: PathBuf,
 
 	/// Reads the given solution and outputs a colored graph with the path taken
 	#[clap(long)]
-	solution_path: Option<PathBuf>,
+	solution: Option<PathBuf>,
 
 	#[clap(long)]
 	run: Option<RunKind>,

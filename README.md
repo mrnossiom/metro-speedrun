@@ -4,7 +4,7 @@ Code to generate graphs of subway networks based on Wikidata queries and find/an
 
 # Building
 
-When using the Nix shell, you can expect GLIBC version mismatch from your environment.
+When using the Nix shell, you can expect *GLIBC* version mismatch from your environment.
 Clear your `target/` directory and run cargo build commands inside a isolated dev shell with the following.
 
 ```bash
@@ -21,7 +21,9 @@ while :; do cargo build; read; done
 # Resources
 
 - Sikora, Florian. The Shortest Way to Visit All Metro Lines in a City. 2018, https://arxiv.org/abs/1709.05948.
+- Beckenbach, Isabel, et al. The S-Bahn Challenge in Berlin. 2015, https://api.semanticscholar.org/CorpusID:114980283.
 
----
+- 3D Stations <http://estacions.albertguillaumes.cat/>
+- Leaderboard <https://www.mousti.lu/metro/>
 
-- Beckenbach, Isabel, et al. The S-Bahn Challenge in Berlin. 2015, https://api.semanticscholar.org/CorpusID:114980283. 
+[polytechnique-homework]: https://web.archive.org/web/20070202173622/http://www.enseignement.polytechnique.fr/profs/informatique/Philippe.Chassignet/03-04/INF_431/dm_1.html
