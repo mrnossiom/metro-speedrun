@@ -4,9 +4,6 @@
 
     rust-overlay.url = "github:oxalica/rust-overlay";
     rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-
-    gitignore.url = "github:hercules-ci/gitignore.nix";
-    gitignore.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -14,7 +11,6 @@
       self,
       nixpkgs,
       rust-overlay,
-      gitignore,
     }:
     let
       inherit (nixpkgs.lib) genAttrs;
@@ -39,7 +35,7 @@
 
       packages = forAllPkgs (pkgs: rec {
         default = metro-speedrun;
-        metro-speedrun = pkgs.callPackage ./package.nix { inherit gitignore; };
+        metro-speedrun = pkgs.callPackage ./package.nix { };
       });
 
       devShells = forAllPkgs (
