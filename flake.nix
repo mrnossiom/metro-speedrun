@@ -36,6 +36,12 @@
       packages = forAllPkgs (pkgs: rec {
         default = metro-speedrun;
         metro-speedrun = pkgs.callPackage ./package.nix { };
+        website = pkgs.stdenv.mkDerivation {
+          name = "metro-speedrun-website";
+          src = ./web;
+          nativeBuildInputs = [ pkgs.typst ];
+          buildPhase = "typst compile $src/main.typ --features bundle,html --format bundle $out";
+        };
       });
 
       devShells = forAllPkgs (
