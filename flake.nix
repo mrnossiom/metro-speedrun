@@ -59,10 +59,6 @@
               scipopt-scip
             ];
 
-            shellHook = ''
-              echo -e "\n\n⚠️ Read the README if you encounter any library linking issue."
-            '';
-
             LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];
             SCIPOPTDIR = pkgs.scipopt-scip.out;
           };

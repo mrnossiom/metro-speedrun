@@ -59,9 +59,9 @@ end;
 			let (source, target, line) = arcs_path?;
 			println!(
 				"{} → {} | {}",
-				&data.stations[&source].name,
-				&data.stations[&target].name,
-				&data.lines[data.line_map[&line].index()]
+				data.stations[&source].name,
+				data.stations[&target].name,
+				data.lines[data.line_map[&line].index()]
 			);
 		}
 

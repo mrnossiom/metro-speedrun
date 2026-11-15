@@ -63,12 +63,12 @@ fn main() -> eyre::Result<()> {
 
 	let data = SubwayData::fetch(&args.city_qid).wrap_err("could not fetch subway data")?;
 
-	let path = args.output_dir.join("network.dot");
+	let path = args.output.join("network.dot");
 	let network = Network::from(&data);
 
-	if let Some(solution_path) = args.solution_path {
-		let solution = read_solution(&solution_path)?;
-		let path = args.output_dir.join("network.solution.dot");
+	if let Some(solution) = args.solution {
+		let solution = read_solution(&solution)?;
+		let path = args.output.join("network.solution.dot");
 		println!("saving solution to `{}`", path.display());
 		fs::write(
 			path,
@@ -78,10 +78,10 @@ fn main() -> eyre::Result<()> {
 	}
 
 	// only clean output dir when redoing a computation
-	if fs::exists(&args.output_dir)? {
-		fs::remove_dir_all(&args.output_dir)?;
+	if fs::exists(&args.output)? {
+		fs::remove_dir_all(&args.output)?;
 	}
-	fs::create_dir_all(&args.output_dir)?;
+	fs::create_dir_all(&args.output)?;
 
 	println!("saving network to `{}`", path.display());
 	fs::write(path, network.to_dot(&data))?;
@@ -90,11 +90,11 @@ fn main() -> eyre::Result<()> {
 	let nb_stripped = stripped_network.strip_line_ends();
 	println!("stripped {} irrelevant nodes from the network", nb_stripped);
 
-	let path = args.output_dir.join("network.stripped.dot");
+	let path = args.output.join("network.stripped.dot");
 	println!("saving stripped network to `{}`", path.display());
 	fs::write(path, stripped_network.to_dot(&data))?;
 
-	let path = args.output_dir.join("inverted.dot");
+	let path = args.output.join("inverted.dot");
 	println!("saving inverted network to `{}`", path.display());
 	let inv_network = InvertedNetwork::from(&stripped_network);
 	fs::write(path, inv_network.to_dot(&data))?;
@@ -102,7 +102,7 @@ fn main() -> eyre::Result<()> {
 	match args.run {
 		None => {}
 		Some(RunKind::Scip) => {
-			let path = args.output_dir.join("scip");
+			let path = args.output.join("scip");
 			fs::create_dir(&path)?;
 			scip::PaperOpt::new(path, &stripped_network, &data).run()?;
 		}
