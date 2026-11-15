@@ -2,13 +2,17 @@ SELECT DISTINCT ?stationQid ?adjacentStationQid ?lineQid
 WHERE {
   BIND(wd:{subway} as ?transportNetwork)
 
-  ?stationQid wdt:P31/wdt:P279* wd:Q928830. # subclass* instance of = metro station
-  ?stationQid wdt:P16 ?transportNetwork. # transport network
-  ?adjacentStationQid wdt:P16 ?transportNetwork.
+  ?stationQid
+    wdt:P31/wdt:P279* wd:Q928830; # subclass* instance of = metro station
+    wdt:P16 ?transportNetwork;
+    wdt:P5817 wd:Q55654238.       # state of use = in use
 
-  ?stationQid wdt:P5817 wd:Q55654238. # state of use = in use
-  ?adjacentStationQid wdt:P5817 wd:Q55654238. # state of use = in use
-  ?lineQid wdt:P5817 wd:Q55654238. # state of use = in use
+  ?adjacentStationQid
+    wdt:P16 ?transportNetwork;
+    wdt:P5817 wd:Q55654238. # state of use = in use
+
+  ?lineQid
+    wdt:P5817 wd:Q55654238. # state of use = in use
 
   # Ensure adjacent station is on the same line
   ?stationQid p:P197 ?adjacentStation.
