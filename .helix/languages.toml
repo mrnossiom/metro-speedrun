@@ -1,0 +1,4 @@
+[language-server.tinymist.config]
+exportTarget = "bundle"
+projectResolution = "lockDatabase"
+typstExtraArgs = ["--features=html,bundle"]

@@ -13,5 +13,3 @@ Code to generate graphs of subway networks based on Wikidata queries and find/an
 
 - 3D Stations <http://estacions.albertguillaumes.cat/>
 - Leaderboard <https://www.mousti.lu/metro/>
-
-[polytechnique-homework]: https://web.archive.org/web/20070202173622/http://www.enseignement.polytechnique.fr/profs/informatique/Philippe.Chassignet/03-04/INF_431/dm_1.html

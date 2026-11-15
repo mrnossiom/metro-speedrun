@@ -57,6 +57,11 @@
 
               clang
               scipopt-scip
+
+              sfz
+              git-pages-cli
+              tinymist
+              typst
             ];
 
             LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.libclang.lib ];

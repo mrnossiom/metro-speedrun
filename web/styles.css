@@ -1,0 +1,153 @@
+@import url('/reset.css');
+
+/* * { border: 1px solid red; } */
+
+:root {
+  --width-article: clamp(45ch, 100%, 65ch);
+
+  /* colors of the parisian subway network */
+  --color-line-1: #FFBE00;
+  --color-line-2: #0055C8;
+  --color-line-3: #6E6E00;
+  --color-line-3bis: #82C8E6;
+  --color-line-4: #A0006E;
+  --color-line-5: #FF5A00;
+  --color-line-6: #82DC73;
+  --color-line-7: #FF82B4;
+  --color-line-7bis: #82DC73;
+  --color-line-8: #D282BE;
+  --color-line-9: #D2D200;
+  --color-line-10: #DC9600;
+  --color-line-11: #6E491E;
+  --color-line-12: #00643C;
+  --color-line-13: #82C8E6;
+  --color-line-14: #640082;
+
+  /* random nice color palette */
+  --color-a: var(--color-line-12);
+  --color-b: var(--color-line-5);
+  --color-c: var(--color-line-1);
+  --color-d: var(--color-line-9);
+  --color-e: var(--color-line-3);
+
+  --color-text: black;
+  --color-text-accent: var(--color-line-4);
+  --color-bg-darker: #bbbbbb;
+  --color-bg-dark: #cccccc;
+  --color-bg-light: #f0f0f0;
+  --color-bg-lighter: #f5f5f5;
+
+  --border-color: var(--color-bg-dark);
+  --border-width: 1px;
+
+  --radius-default: .3rem;
+}
+
+body>div {
+  padding: 1rem;
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+
+  max-width: 900px;
+}
+
+h1 {
+  &::after {
+    --sq-size: 1rem;
+    --sq-gap: .3rem;
+
+    content: "";
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 0.4em;
+
+    width: calc(var(--sq-size) * 5 + var(--sq-gap) * 4);
+    height: var(--sq-size);
+
+    background: linear-gradient(to right,
+        var(--color-a) calc(0 * var(--sq-size) + 0 * var(--sq-gap)) calc(1 * var(--sq-size) + 0 * var(--sq-gap)),
+        transparent calc(1 * var(--sq-size) + 0 * var(--sq-gap)) calc(1 * var(--sq-size) + 1 * var(--sq-gap)),
+        var(--color-b) calc(1 * var(--sq-size) + 1 * var(--sq-gap)) calc(2 * var(--sq-size) + 1 * var(--sq-gap)),
+        transparent calc(2 * var(--sq-size) + 1 * var(--sq-gap)) calc(2 * var(--sq-size) + 2 * var(--sq-gap)),
+        var(--color-c) calc(2 * var(--sq-size) + 2 * var(--sq-gap)) calc(3 * var(--sq-size) + 2 * var(--sq-gap)),
+        transparent calc(3 * var(--sq-size) + 2 * var(--sq-gap)) calc(3 * var(--sq-size) + 3 * var(--sq-gap)),
+        var(--color-d) calc(3 * var(--sq-size) + 3 * var(--sq-gap)) calc(4 * var(--sq-size) + 3 * var(--sq-gap)),
+        transparent calc(4 * var(--sq-size) + 3 * var(--sq-gap)) calc(4 * var(--sq-size) + 4 * var(--sq-gap)),
+        var(--color-e) calc(4 * var(--sq-size) + 4 * var(--sq-gap)));
+  }
+}
+
+h2 {
+  margin-top: 1rem;
+}
+
+.labels {
+  margin-bottom: 1rem;
+  display: flex;
+  column-gap: var(--border-width);
+
+  >* {
+    outline: var(--border-width) solid var(--border-color);
+    padding: .5rem;
+
+    &:first-child {
+      border-radius: var(--radius-default) 0 0 var(--radius-default);
+    }
+
+    &:last-child {
+      border-radius: 0 var(--radius-default) var(--radius-default) 0;
+    }
+  }
+}
+
+.category-description {
+  padding: 1rem;
+  background-color: var(--color-bg-light);
+  border-radius: var(--radius-default);
+  margin-bottom: 1rem;
+}
+
+.table-wrapper {
+  overflow: scroll;
+}
+
+table {
+  table-layout: auto;
+  border-collapse: collapse;
+  width: 100%;
+
+
+  th {
+    background-color: var(--color-bg-light);
+  }
+
+  th,
+  td {
+    padding: .5rem .3rem;
+    white-space: nowrap;
+    border: var(--border-width) solid var(--border-color);
+    cursor: pointer;
+  }
+
+  tr:nth-child(even) {
+    background-color: var(--color-bg-light);
+  }
+
+  /* let the last column eat all the extra space so all categories look the same */
+  td:last-child {
+    width: 100%;
+  }
+}
+
+.email {
+  &::before {
+    content: "metro[a";
+  }
+
+  &::after {
+    content: "t]wiro.world";
+  }
+}

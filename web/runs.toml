@@ -1,0 +1,107 @@
+[category.any]
+name = "any%"
+description = """
+Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro. \
+Pour valider une tentative, il faut emprunter chaque ligne de métro sur au moins une station. \
+Les passages par l'exterieur du réseau sont autorisés.
+"""
+
+[category.100]
+name = "100%"
+description = """
+Les coureur·euse·s doivent parcourir l'intégralité du réseau parisien de métro. \
+Pour valider une tentative, il faut passer par chaque station au minimum une fois. \
+Les passages par l'exterieur du réseau sont autorisés.
+"""
+
+[category.any-rer]
+name = "any% RER"
+description = """
+Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro et de RER. \
+Pour valider une tentative, il faut emprunter chaque ligne de métro et de RER sur au moins une station. \
+Les passages par l'exterieur du réseau sont autorisés.
+"""
+
+[category.croissant]
+name = "Croissant%"
+description = """
+Version modifiée de la catégorie any%.
+Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro. \
+Pour valider une tentative, il faut emprunter chaque ligne de métro sur au moins une station. \
+À chaque correspondance, il faut acheter un croissant dans la boulangerie la plus proche avant d'emprunter à nouveau le métro.
+"""
+
+[[run]]
+category = "any%"
+time = "1:03:26"
+date = "21/12/2023"
+runners = ["Mathieu", "Clément"]
+comment = "Pas mal de clutch et de sprint..."
+attachments = ["https://www.youtube.com/watch?v=qq-4isughh8"]
+
+[[run]]
+category = "any%"
+time = "1:22:00"
+date = "11/09/2017"
+runners = ["Florian Sikora"]
+comment = "Réalisé avant la reduction de la fréquence de passage"
+attachments = []
+
+[[run]]
+category = "any%"
+time = "1:28:10"
+date = "19/05/2023"
+runners = ["Gary", "Moustiluigi"]
+comment = "Clutchs de fou"
+attachments = ["https://www.youtube.com/watch?v=xNtiMtOHN3s"]
+
+[[run]]
+category = "any%"
+time = "1:28:40"
+date = "29/12/2023"
+runners = ["Rémy", "Selin"]
+comment = "Départ vendredi bcp de chance mais 7 mins d'attente pour la 9 et 10 mins d'att pour la 3 bis."
+attachments = [
+  # had to use an archive link because the original service is down
+  "https://web.archive.org/web/20260406134415/https://i.ibb.co/dWR1298/IMG-4987.jpg"
+]
+
+[[run]]
+category = "any%"
+time = "1:33:00"
+date = "09/12/2023"
+runners = ["Gary", "Moustiluigi"]
+comment = "Run réalisée tardivement pendant la pseudo heure de pointe du Samedi."
+attachments = []
+
+[[run]]
+category = "any%"
+time = "1:36:46"
+date = "18/05/2023"
+runners = ["DashNode", "Moustiluigi"]
+comment = "N/A"
+attachments = []
+
+[[run]]
+category = "any%"
+time = "1:41:10"
+date = "14/04/2022"
+runners = ["DashNode", "Moustiluigi"]
+comment = "Fuck SIEL"
+attachments = []
+
+[[run]]
+category = "any% RER"
+time = "2:06:55"
+date = "14/04/2022"
+runners = ["James", "Steph"]
+comment = "(16 lignes métro + 5 lignes RER) -> Une visite par station (la route de p. 16 Sikora (2018))"
+attachments = []
+
+[[run]]
+category = "100%"
+time = "15:13:00"
+date = "21/01/2015"
+runners = ["Hugo LQC"]
+comment = "LQC #1"
+attachments = ["https://www.youtube.com/watch?v=ZWjKbxCUCKc"]
