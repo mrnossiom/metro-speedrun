@@ -1,0 +1,18 @@
+when:
+  - event: ["push"]
+    branch: ["main"]
+
+engine: nixery
+
+dependencies:
+  nixpkgs:
+
+steps:
+  - command: nix build .#website
+
+  - command: |
+      nix run .#git-pages-cli -- \
+        https://metro.wiro.world \
+        --password $GIT_PAGES_CHALLENGE \
+        --server grebedoc.dev \
+        --upload-dir result

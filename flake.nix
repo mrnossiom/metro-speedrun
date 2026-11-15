@@ -34,6 +34,9 @@
       formatter = forAllPkgs (pkgs: pkgs.nixfmt-tree);
 
       packages = forAllPkgs (pkgs: rec {
+        # pin packages used in workflows
+        inherit (pkgs) git-pages-cli;
+
         default = metro-speedrun;
         metro-speedrun = pkgs.callPackage ./package.nix { };
         website = pkgs.stdenv.mkDerivation {
@@ -48,7 +51,12 @@
         pkgs:
         let
           file-rust-toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-          rust-toolchain = file-rust-toolchain.override { extensions = [ "rust-analyzer"  "rust-src" ]; };
+          rust-toolchain = file-rust-toolchain.override {
+            extensions = [
+              "rust-analyzer"
+              "rust-src"
+            ];
+          };
         in
         {
           default = pkgs.mkShell {
