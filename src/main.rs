@@ -11,7 +11,6 @@ mod glpk;
 mod network;
 mod queries;
 mod scip;
-mod traversals;
 
 use crate::{
 	network::{Arc, InvertedNetwork, Network},
@@ -110,9 +109,6 @@ fn main() -> eyre::Result<()> {
 			glpk::PaperOpt::invoke(&stripped_network, &data)?;
 		}
 	}
-
-	// traversals::NormalDfs::traverse(&stripped_network, &data);
-	// traversals::InvertedBfs::traverse(&inv_network, &data);
 
 	Ok(())
 }
