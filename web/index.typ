@@ -1,4 +1,4 @@
-#import "utils.typ": tabs
+#import "utils.typ": parse-date, parse-duration, tabs
 
 #show: document.with("index.html")
 
@@ -28,19 +28,55 @@ Ce site est la suite du leaderboard original sur le site de #link("https://www.m
 
 Le leaderboard original fait une distinction entre les temps Pré/Post-Pécresse.
 Au vu du nombre de temps concernés (un seul), il nous semble plus justicieux de simplifier le leaderboard en combinant ces catégories.
-La volonté de faire un nouveau classement est aussi de pouvoir fixer des règles claires sur les catégories (e.g. à quel moment démarrer le chronomètre);
+
+La volonté de faire un nouveau classement est aussi de pouvoir fixer des règles claires.
+Notamment, quand démarrer et arrêter le chronometre, est-ce qu'il est possible de passer par l'exterieur.
 
 = Tentatives
 
 Le temps est décompté de quai à quai. La tentative commence quand le pied se détache du quai de départ et se termine quand on touche le quai d'arrivée.
 
 #{
-  let (category: categories, run: runs) = toml("runs.toml")
+  let categories = (
+    // TODO: pour toutes les catégories régulière préciser si on peut passer par l'extérieur
+    any: (
+      name: "Any%",
+      description: [
+        Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro. \
+        Pour valider une tentative, il faut emprunter chaque ligne de métro sur au moins une station.
+      ],
+    ),
+    "100": (
+      name: "100%",
+      description: [
+        Les coureur·euse·s doivent parcourir l'intégralité du réseau parisien de métro. \
+        Pour valider une tentative, il faut passer par chaque station au minimum une fois.
+      ],
+    ),
+    any-rer: (
+      name: "Any% RER",
+      description: [
+        Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro et de RER. \
+        Pour valider une tentative, il faut emprunter chaque ligne de métro et de RER sur au moins une station.
+      ],
+    ),
+    // TODO: clarifier si on peut rentrer dans une station différente que celle dont on est sorti
+    croissant: (
+      name: "Croissant%",
+      description: [
+        Version modifiée de la catégorie any%.
+        Les coureur·euse·s doivent parcourir une partie du réseau parisien de métro. \
+        Pour valider une tentative, il faut emprunter chaque ligne de métro sur au moins une station. \
+        À chaque correspondance, il faut acheter un croissant dans la boulangerie la plus proche avant d'emprunter à nouveau le métro.
+      ],
+    ),
+  )
+  let (run: runs) = toml("runs.toml")
 
   let content = categories
     .pairs()
     .map(((key, category)) => {
-      let runs = runs.filter(((run)) => run.category == category.name)
+      let runs = runs.filter(((run)) => run.category == key).sorted(key: ((run)) => parse-duration(run.time))
 
       let content = [
         #html.p(
@@ -63,7 +99,7 @@ Le temps est décompté de quai à quai. La tentative commence quand le pied se 
                   run.time,
                   run.date,
                   run.runners.join[ & ],
-                  run.attachments.map(src => link(src)[📹]).join() + " " + run.comment,
+                  run.attachments.map(((emoji, src)) => link(src, emoji)).join() + " " + run.comment,
                 ))
                 .flatten(),
             ),
@@ -90,8 +126,11 @@ Pour soumettre une tentative, vous pouvez envoyer un mail à #html.span(class: "
 
 - #link("https://arxiv.org/pdf/1709.05948")[Sikora, Florian. The Shortest Way to Visit All Metro Lines in a City. 2018]
 
+
+  #let gh-sikora-metro = "https://github.com/fsikora/metro/";
   #let wiki-linopt = "https://fr.wikipedia.org/wiki/Optimisation_lin%C3%A9aire_en_nombres_entiers";
   Ce papier modélise le problème de chemin le plus court pour de #link(wiki-linopt)[l'optimisation linéaire en nombre entiers] (_Integer Linear Programming_).
+  Le code utilisé pour les résultats du papier est disponible dans ce #link(gh-sikora-metro)[dépôt de code].
 
 - #link("http://estacions.albertguillaumes.cat/")[Estacions i intercanviadors (Gares et correspondances)]
 
@@ -103,7 +142,7 @@ Pour soumettre une tentative, vous pouvez envoyer un mail à #html.span(class: "
 
   Devoir Maison de l'école Polytechnique en 2003
 
-- #link("https://github.com/mrnossiom/metro-speedrun")[dépôt de code `metro-speedrun`]
+- #link("https://github.com/mrnossiom/metro-speedrun")[dépôt de code `mrnossiom/metro-speedrun`]
 
   Contient le code de ce site ainsi que les algorithmes pour chercher les chemins les plus courts selon différents critères.
 

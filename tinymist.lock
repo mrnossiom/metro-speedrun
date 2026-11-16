@@ -6,11 +6,11 @@ version = "0.1.0-beta0"
 id = "file:web/main.typ"
 inputs = []
 main = "file:web/main.typ"
-root = "file:."
 system-fonts = true
 
 [[task]]
 document = "file:web/main.typ"
 id = "file:web/main.typ"
-type = "export-pdf"
+output = "public"
+type = "export-bundle"
 when = "never"

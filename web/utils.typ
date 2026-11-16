@@ -1,3 +1,12 @@
+#let parse-date(str) = {
+  let (day, month, year) = str.split("/")
+  datetime(day: int(day), month: int(month), year: int(year))
+}
+#let parse-duration(str) = {
+  let (hours, mins, secs) = str.split(":")
+  duration(hours: int(hours), minutes: int(mins), seconds: int(secs))
+}
+
 // categories: array<(name: str, key: str, content: str)>
 #let tabs(categories) = {
   let keys = categories.map(((name, key, content)) => key)
