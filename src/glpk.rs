@@ -86,7 +86,9 @@ where
 	fingerprint.truncate(8);
 	let cache_file = format!("{CACHE_DIR}/{name}_{fingerprint}.txt");
 
-	if !Path::new(&cache_file).exists() {
+	if Path::new(&cache_file).exists() {
+		println!("solution `{name}` cached in {cache_file}");
+	} else {
 		println!("computing `{name}` solution to {cache_file}");
 
 		let glpk_dir = format!("/tmp/glpsol-{name}-{fingerprint}");
@@ -111,8 +113,6 @@ where
 		}
 
 		fs::remove_dir_all(glpk_dir)?;
-	} else {
-		println!("solution `{name}` cached in {cache_file}");
 	}
 
 	let csv = csv::Reader::from_path(cache_file)?;

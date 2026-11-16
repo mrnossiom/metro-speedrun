@@ -1,8 +1,4 @@
-use std::{
-	collections::{BTreeMap, HashMap},
-	fmt, fs,
-	path::PathBuf,
-};
+use std::{collections::BTreeMap, fmt, fs, path::PathBuf};
 
 use eyre::{ContextCompat, bail};
 use petgraph::visit::EdgeRef;
@@ -243,14 +239,14 @@ impl PaperOpt {
 				objective as u32 - 2
 			);
 
-			let name_map = solution.as_name_map();
+			let name_map: BTreeMap<String, f64> = solution.as_name_map().into_iter().collect();
 
 			// SAFETY: this should not be held beyond the `free_transform` call
 
 			fs::write(
 				self.output_path
 					.join(format!("solution{solution_nb:0>2}.dat")),
-				dump_solution(&name_map),
+				dump_solution_raw(&name_map),
 			)?;
 			fs::write(
 				self.output_path
@@ -258,15 +254,16 @@ impl PaperOpt {
 				dump_solution_path(&self.rev_follows, &name_map)?,
 			)?;
 
-			// Reset model with added constraint for the last solution and retry
+			// reset model with added constraint for the last solution and retry
 			mdl = solved_mdl.free_transform();
 			solution_nb += 1;
+
 			constrain_solution_in_model(&mut mdl, &self.rev_follows, &name_map, objective);
 		}
 	}
 }
 
-fn dump_solution(name_map: &HashMap<String, f64>) -> String {
+fn dump_solution_raw(name_map: &BTreeMap<String, f64>) -> String {
 	std::fmt::from_fn(|f| {
 		for (name, value) in name_map {
 			writeln!(f, "{name},{value}")?;
@@ -278,7 +275,7 @@ fn dump_solution(name_map: &HashMap<String, f64>) -> String {
 
 fn dump_solution_path(
 	rfollows: &BTreeMap<String, (Arc, Variable)>,
-	name_map: &HashMap<String, f64>,
+	name_map: &BTreeMap<String, f64>,
 ) -> eyre::Result<String> {
 	let arcs = name_map
 		.keys()
@@ -321,7 +318,7 @@ fn dump_solution_path(
 fn constrain_solution_in_model(
 	mdl: &mut Model<ProblemCreated>,
 	rev_follows: &BTreeMap<String, (Arc, Variable)>,
-	name_map: &HashMap<String, f64>,
+	name_map: &BTreeMap<String, f64>,
 	objective: f64,
 ) {
 	let mut c = cons();
@@ -332,7 +329,9 @@ fn constrain_solution_in_model(
 		// we do this instead of (== 1.0) because we use linear binary variables
 		.filter(|(_, value)| **value > 0.5)
 		// keep only follow variables
-		.flat_map(|(id, _)| rev_follows.get(id.strip_prefix("t_").unwrap()))
+		.map(|(id, _)| id.strip_prefix("t_").unwrap())
+		.filter(|varname| varname.starts_with("follow_"))
+		.map(|varname| rev_follows.get(varname).unwrap())
 		.map(|(_arc, var)| var)
 		.collect::<Vec<_>>();
 

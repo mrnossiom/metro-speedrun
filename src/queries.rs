@@ -65,12 +65,6 @@ impl SubwayData {
 	}
 }
 
-impl SubwayData {
-	pub fn nb_lines(&self) -> u32 {
-		self.lines.len() as u32
-	}
-}
-
 /// Fetches a SPARQL query result, caches it on disk.
 pub fn fetch_query<T>(
 	name: &str,
@@ -118,10 +112,6 @@ impl LineId {
 	fn new(index: usize) -> Self {
 		assert!(index < 32, "number of lines must stay under 32");
 		Self(index as u8)
-	}
-
-	pub fn bitmask(&self) -> u32 {
-		1u32 << self.0
 	}
 
 	pub fn index(&self) -> usize {

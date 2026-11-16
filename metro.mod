@@ -37,11 +37,10 @@ minimize NbTransitions:
 
 solve;
 
+printf "source,target,line\n";
 for {(u,v,l) in Arcs : follow[u,v,l] && l in RealLines}
 {
-	printf "source,target,line\n";
 	printf "%s,%s,%s\n", u, v, l;
 }
 
 end;
-
