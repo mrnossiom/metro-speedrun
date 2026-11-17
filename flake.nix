@@ -59,7 +59,7 @@
           };
         in
         {
-          default = pkgs.mkShell {
+          default = pkgs.mkShell.override { stdenv = pkgs.clangStdenv; } {
             packages = with pkgs; [
               pkg-config
               rust-toolchain

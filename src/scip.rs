@@ -48,13 +48,13 @@ impl fmt::Display for Line {
 struct Arc(Station, Station, Line);
 
 pub struct PaperOpt {
-	output_path: PathBuf,
+	output: PathBuf,
 	model: Option<Model<ProblemCreated>>,
 	rev_follows: BTreeMap<String, (Arc, Variable)>,
 }
 
 impl PaperOpt {
-	pub fn new(output_path: PathBuf, network: &Network, data: &SubwayData) -> Self {
+	pub fn new(output: PathBuf, network: &Network, data: &SubwayData) -> Self {
 		let mut mdl = Model::new()
 			.include_default_plugins()
 			// Limit memory to 10GiB
@@ -213,53 +213,48 @@ impl PaperOpt {
 		mdl = mdl.show_output();
 
 		Self {
-			output_path,
+			output,
 			model: Some(mdl),
 			rev_follows,
 		}
 	}
 
 	pub fn run(&mut self) -> eyre::Result<()> {
-		let mut mdl = self.model.take().unwrap();
-		let mut solution_nb = 0;
+		let mdl = self.model.take().unwrap();
 
 		// TODO: add ability to preload a solution to resume a previous run
 		// mdl.add_sol(solution).unwrap();
 
-		loop {
-			let solved_mdl = mdl.solve();
-			let Some(solution) = solved_mdl.best_sol() else {
-				bail!("stopping at solution {solution_nb}");
-			};
+		let format = "cip";
+		let binding = self.output.join("scipmodel").with_extension(format);
+		mdl.write(binding.as_os_str().to_str().unwrap(), format, true)
+			.unwrap();
 
+		let mdl = mdl.solve_concurrent();
+
+		let Some(solutions) = mdl.get_sols() else {
+			bail!("no solution found");
+		};
+
+		for (idx, solution) in solutions.iter().enumerate() {
 			let objective = solution.obj_val();
+			let nb_transitions = objective as u32 - 2;
 
-			eprintln!(
-				"found solution {solution_nb} with {} transitions",
-				objective as u32 - 2
-			);
+			eprintln!("found solution {idx} with {nb_transitions} transitions",);
 
 			let name_map: BTreeMap<String, f64> = solution.as_name_map().into_iter().collect();
 
-			// SAFETY: this should not be held beyond the `free_transform` call
-
 			fs::write(
-				self.output_path
-					.join(format!("solution{solution_nb:0>2}.dat")),
+				self.output.join(format!("solution{idx:0>3}.dat")),
 				dump_solution_raw(&name_map),
 			)?;
 			fs::write(
-				self.output_path
-					.join(format!("solution{solution_nb:0>2}.txt")),
+				self.output.join(format!("solution{idx:0>3}.txt")),
 				dump_solution_path(&self.rev_follows, &name_map)?,
 			)?;
-
-			// reset model with added constraint for the last solution and retry
-			mdl = solved_mdl.free_transform();
-			solution_nb += 1;
-
-			constrain_solution_in_model(&mut mdl, &self.rev_follows, &name_map, objective);
 		}
+
+		Ok(())
 	}
 }
 
@@ -277,7 +272,7 @@ fn dump_solution_path(
 	rfollows: &BTreeMap<String, (Arc, Variable)>,
 	name_map: &BTreeMap<String, f64>,
 ) -> eyre::Result<String> {
-	let arcs = name_map
+	let mut arcs = name_map
 		.keys()
 		.flat_map(|var| rfollows.get(var.strip_prefix("t_").unwrap()))
 		.collect::<Vec<_>>();
@@ -287,17 +282,22 @@ fn dump_solution_path(
 	// order path
 	let mut current_src = Station::Source;
 	loop {
-		let (Arc(src, dst, line), _) = arcs
+		let idx = arcs
 			.iter()
 			// TODO: handle paths that go A -> B -> C -> B -> D, be careful not to skip the roundtrip
-			.find(|(Arc(src, _, _), _)| *src == current_src)
+			.position(|(Arc(src, _, _), _)| *src == current_src)
 			.wrap_err("could not transform to path, solution is malformed")?;
+
+		let (Arc(src, dst, line), _) = arcs.swap_remove(idx);
 
 		match (src, dst, line) {
 			(Station::Real(src), Station::Real(dst), Line::Real(line)) => {
 				path.push((*src, *dst, *line));
 			}
-			(_, Station::Target, _) => break,
+			(_, Station::Target, _) => {
+				assert!(arcs.is_empty(), "there are some arcs left {arcs:#?}");
+				break;
+			}
 			_ => {}
 		}
 
@@ -313,33 +313,4 @@ fn dump_solution_path(
 	});
 
 	Ok(display.to_string())
-}
-
-fn constrain_solution_in_model(
-	mdl: &mut Model<ProblemCreated>,
-	rev_follows: &BTreeMap<String, (Arc, Variable)>,
-	name_map: &BTreeMap<String, f64>,
-	objective: f64,
-) {
-	let mut c = cons();
-
-	let active_follow_vars = name_map
-		.iter()
-		// keep only active binary variables
-		// we do this instead of (== 1.0) because we use linear binary variables
-		.filter(|(_, value)| **value > 0.5)
-		// keep only follow variables
-		.map(|(id, _)| id.strip_prefix("t_").unwrap())
-		.filter(|varname| varname.starts_with("follow_"))
-		.map(|varname| rev_follows.get(varname).unwrap())
-		.map(|(_arc, var)| var)
-		.collect::<Vec<_>>();
-
-	for var in &active_follow_vars {
-		c = c.coef(var, 1.0);
-	}
-
-	c = c.le(objective - 1.0);
-
-	mdl.add(c);
 }
