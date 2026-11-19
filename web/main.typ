@@ -11,4 +11,5 @@
   asset("site.webmanifest", read("favicons/site.webmanifest", encoding: none))
 
   include "index.typ"
+  include "sikora-route.typ"
 }

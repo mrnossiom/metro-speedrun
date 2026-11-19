@@ -32,6 +32,10 @@ Au vu du nombre de temps concernés (un seul), il nous semble plus justicieux de
 La volonté de faire un nouveau classement est aussi de pouvoir fixer des règles claires.
 Notamment, quand démarrer et arrêter le chronometre, est-ce qu'il est possible de passer par l'exterieur.
 
+= Guides
+
+- Route *Sikora* : #link("/route/sikora.pdf")[(PDF)] #html.a("(LiveSplit)", href: "/route/sikora.lss", download: "sikora.lss").
+
 = Tentatives
 
 Le temps est décompté de quai à quai. La tentative commence quand le pied se détache du quai de départ et se termine quand on touche le quai d'arrivée.
@@ -152,6 +156,6 @@ Pour soumettre une tentative, vous pouvez envoyer un mail à #html.span(class: "
 
 - #link("https://www.mousti.lu/metro/")[mousti.lu leaderboard]
 
-  Les anciennes données de classements ont été récupérés sur ce site.
+  Les anciens temps du classements ont été récupérés sur ce site.
 
-  Possède notament un guide pour le chemin optimal de _Florian Sikora_ #link("https://www.mousti.lu/metro/Tableau_Metro_Any.pdf")[(PDF)].
+  Possède un guide pour le chemin optimal de _Florian Sikora_ #link("https://www.mousti.lu/metro/Tableau_Metro_Any.pdf")[(PDF)].
