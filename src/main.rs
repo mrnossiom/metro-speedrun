@@ -1,5 +1,4 @@
 use std::{
-	collections::BTreeSet,
 	fs,
 	path::{Path, PathBuf},
 };
@@ -8,6 +7,7 @@ use clap::{Parser, ValueEnum};
 use eyre::Context;
 
 mod glpk;
+mod livesplit;
 mod network;
 mod queries;
 mod scip;
@@ -98,8 +98,14 @@ fn main() -> eyre::Result<()> {
 		println!("saving solution to `{}`", path.display());
 		fs::write(
 			path,
-			network.to_dot_with_selected_arcs_colored(&data, &solution),
+			network.to_dot_with_selected_arcs_colored(&data, &solution.iter().cloned().collect()),
 		)?;
+
+		let lss = livesplit::make_splitfile(&data, &solution);
+		let path = output.join("solution.lss");
+		println!("saving livesplit run to `{}`", path.display());
+		fs::write(path, serde_xml_rs::to_string(&lss).unwrap())?;
+
 		return Ok(());
 	}
 
@@ -140,7 +146,7 @@ fn main() -> eyre::Result<()> {
 	Ok(())
 }
 
-fn read_solution(path: &Path) -> eyre::Result<BTreeSet<Arc>> {
+fn read_solution(path: &Path) -> eyre::Result<Vec<Arc>> {
 	let mut csv = csv::Reader::from_path(path).wrap_err("could not read given solution")?;
 	let headers = csv.headers().wrap_err("could not parse CSV header")?;
 
@@ -149,10 +155,10 @@ fn read_solution(path: &Path) -> eyre::Result<BTreeSet<Arc>> {
 		eyre::bail!("header does not match expected `source,target,line`")
 	}
 
-	let mut set = BTreeSet::new();
+	let mut path = Vec::new();
 	for arc in csv.deserialize::<Arc>() {
 		let arc = arc?;
-		set.insert(arc);
+		path.push(arc);
 	}
-	Ok(set)
+	Ok(path)
 }

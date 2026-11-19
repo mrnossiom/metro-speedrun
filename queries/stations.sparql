@@ -11,7 +11,7 @@ WHERE {
   # TODO: add interchange station (P833)?
 
   SERVICE wikibase:label {
-    bd:serviceParam wikibase:language "mul,en,fr".
+    bd:serviceParam wikibase:language "fr,en".
 
     ?qid rdfs:label ?name.
   }

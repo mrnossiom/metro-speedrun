@@ -9,7 +9,7 @@ WHERE {
     wdt:P465 ?color.
 
   SERVICE wikibase:label {
-    bd:serviceParam wikibase:language "mul,en,fr".
+    bd:serviceParam wikibase:language "fr,en".
 
     ?qid rdfs:label ?name
   }
