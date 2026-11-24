@@ -34,7 +34,9 @@ Notamment, quand démarrer et arrêter le chronometre, est-ce qu'il est possible
 
 = Guides
 
-- Route *Sikora* : #link("/route/sikora.pdf")[(PDF)] #html.a("(LiveSplit)", href: "/route/sikora.lss", download: "sikora.lss").
+- Route *Sikora* (Any%) : #link("/route/sikora.pdf")[(PDF)] #html.a("(LiveSplit)", href: "/route/sikora.lss", download: "sikora.lss").
+
+  Cette _route_ utilise le chemin donné dans le #link(<sikora-paper>)[papier de Florian Sikora].
 
 = Tentatives
 
@@ -128,8 +130,7 @@ Pour soumettre une tentative, vous pouvez envoyer un mail à #html.span(class: "
     "https://ris.utwente.nl/ws/portalfiles/portal/6419213/FB-SBAHN-ChallengeV2.pdf",
   )[(alt)]
 
-- #link("https://arxiv.org/pdf/1709.05948")[Sikora, Florian. The Shortest Way to Visit All Metro Lines in a City. 2018]
-
+- #link("https://arxiv.org/pdf/1709.05948")[Sikora, Florian. The Shortest Way to Visit All Metro Lines in a City. 2018] <sikora-paper>
 
   #let gh-sikora-metro = "https://github.com/fsikora/metro/";
   #let wiki-linopt = "https://fr.wikipedia.org/wiki/Optimisation_lin%C3%A9aire_en_nombres_entiers";
